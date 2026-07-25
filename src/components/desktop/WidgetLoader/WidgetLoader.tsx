@@ -1,16 +1,19 @@
 import path from "path";
-import { ReactElement, ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-let domain =
-  process.env.NODE_ENV === "development" ? `http://localhost:3002` : ``;
-
-let basepath = `${domain}/generated/widget`;
-
-let manfiest = `${basepath}/manifest.json`;
-
-export function WidgetLoader({}) {
+export function WidgetLoader({
+  origin = `https://infinity-widget.vercel.app`,
+}) {
   let ref = useRef(null);
   useEffect(() => {
+    let domain =
+      process.env.NODE_ENV === "development"
+        ? `http://localhost:3002`
+        : `${origin}`;
+
+    let basepath = `${domain}/generated/widget`;
+    let manfiest = `${basepath}/manifest.json`;
+
     let clean = () => {};
     //
     fetch(`${manfiest}`, {
@@ -30,8 +33,8 @@ export function WidgetLoader({}) {
           .then((core: { install: any }) => {
             //
             // console.log(core, ref.current);
-
             //
+
             core
               .install({ domElement: ref.current })
               .then((v: () => void) => {

@@ -9,7 +9,9 @@ export function RemoteApp({ window: _win }: { window: WindowInstance }) {
       className="h-full w-full"
       style={{ background: "rgba(250,249,246,0.44)" }}
     >
-      <WidgetLoader></WidgetLoader>
+      <WidgetLoader
+        origin={`https://infinity-widget.vercel.app`}
+      ></WidgetLoader>
     </div>
   );
 }
