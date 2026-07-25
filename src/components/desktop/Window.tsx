@@ -13,6 +13,8 @@ import {
   TerminalApp,
   BrowserApp,
   SettingsApp,
+  WidgetApp,
+  RemoteApp,
   DefaultApp,
 } from "./apps";
 
@@ -45,6 +47,8 @@ const appContentMap: Record<
   terminal: TerminalApp,
   browser: BrowserApp,
   settings: SettingsApp,
+  widgets: WidgetApp,
+  remote: RemoteApp,
 };
 
 // ── Window ─────────────────────────────────────────────────────────────────

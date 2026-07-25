@@ -35,12 +35,18 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.import2 = async (v) => import(v)`,
+          }}
+        ></script>
+
         {children}
 
-              {/* impeccable-live-start */}
-<script src="http://localhost:8400/live.js"></script>
-{/* impeccable-live-end */}
-</body>
+        {/* impeccable-live-start */}
+        <script src="http://localhost:8400/live.js"></script>
+        {/* impeccable-live-end */}
+      </body>
     </html>
   );
 }

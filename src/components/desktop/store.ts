@@ -120,6 +120,8 @@ const defaultIcons: DesktopIconDef[] = [
   { id: "icon-terminal", label: "Terminal", icon: "terminal", appId: "terminal", x: 28, y: 140 },
   { id: "icon-browser", label: "Browser", icon: "globe", appId: "browser", x: 28, y: 252 },
   { id: "icon-settings", label: "Settings", icon: "gear", appId: "settings", x: 28, y: 364 },
+  { id: "icon-widgets", label: "Widgets", icon: "monitor", appId: "widgets", x: 28, y: 476 },
+  { id: "icon-remote", label: "Remote", icon: "monitor", appId: "remote", x: 28, y: 588 },
 ];
 
 // ── Default app registry ───────────────────────────────────────────────────
@@ -129,6 +131,8 @@ const defaultApps: AppDefinition[] = [
   { id: "terminal", name: "Terminal", icon: "terminal", defaultWidth: 680, defaultHeight: 460, minWidth: 400, minHeight: 260 },
   { id: "browser", name: "Browser", icon: "globe", defaultWidth: 960, defaultHeight: 600, minWidth: 540, minHeight: 380 },
   { id: "settings", name: "Settings", icon: "gear", defaultWidth: 660, defaultHeight: 480, minWidth: 460, minHeight: 340 },
+  { id: "widgets", name: "Widgets", icon: "monitor", defaultWidth: 720, defaultHeight: 520, minWidth: 440, minHeight: 360 },
+  { id: "remote", name: "Remote", icon: "monitor", defaultWidth: 800, defaultHeight: 540, minWidth: 500, minHeight: 340 },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
