@@ -193,8 +193,13 @@ export function Window({ window: win }: { window: WindowInstance }) {
     <div
       className={`absolute flex flex-col overflow-hidden transition-[opacity,border-radius] duration-200 ${win.minimized ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       style={{
-        left: win.maximized || isMobile ? 0 : win.x,
-        top: win.maximized || isMobile ? 0 : win.y,
+        left: 0,
+        top: 0,
+        willChange: "auto",
+        transform:
+          win.maximized || isMobile
+            ? undefined
+            : `translate(${win.x}px, ${win.y}px)`,
         width: win.maximized || isMobile ? "100%" : win.width,
         height:
           win.maximized || isMobile
