@@ -2,10 +2,15 @@ import path from "path";
 import { useEffect, useRef, useState } from "react";
 
 export function RemoteAppLoader({
-  app = { name: "happy app", origin: `https://infinity-widget.vercel.app` },
+  app = {
+    id: "myappid-001",
+    name: "happy app",
+    origin: `https://infinity-widget.vercel.app`,
+  },
   user = null,
 }: {
   app: {
+    id: string;
     origin: string;
     name: string;
   };

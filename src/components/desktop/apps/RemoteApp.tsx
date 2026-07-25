@@ -17,6 +17,7 @@ export function RemoteApp({ window: _win }: { window: WindowInstance }) {
           email: "lok@lok.com",
         }}
         app={{
+          id: _win.id,
           name: "loklok cool widget",
           origin: `https://infinity-widget.vercel.app`,
         }}
