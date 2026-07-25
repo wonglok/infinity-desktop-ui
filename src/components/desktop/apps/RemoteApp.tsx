@@ -4,6 +4,7 @@ import { type WindowInstance } from "../store";
 import { WidgetLoader } from "../WidgetLoader/WidgetLoader";
 
 export function RemoteApp({ window: _win }: { window: WindowInstance }) {
+  // console.log(_win);
   return (
     <div
       className="h-full w-full"
