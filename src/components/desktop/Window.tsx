@@ -58,6 +58,7 @@ export function Window({ window: win }: { window: WindowInstance }) {
     moveWindow,
     resizeWindow,
     showModal,
+    isMobile,
   } = useDesktopStore();
 
   const [dragging, setDragging] = useState(false);
@@ -84,7 +85,7 @@ export function Window({ window: win }: { window: WindowInstance }) {
 
   const onPointerDownTitle = useCallback(
     (e: RPointerEvent) => {
-      if (win.maximized) return;
+      if (win.maximized || isMobile) return;
       focusWindow(win.id);
       setDragging(true);
       dragRef.current = {
@@ -95,7 +96,7 @@ export function Window({ window: win }: { window: WindowInstance }) {
       };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     },
-    [win.id, win.maximized, win.x, win.y, focusWindow],
+    [win.id, win.maximized, win.x, win.y, focusWindow, isMobile],
   );
 
   const onPointerMove = useCallback(
@@ -170,13 +171,17 @@ export function Window({ window: win }: { window: WindowInstance }) {
   );
 
   const handleClose = useCallback(async () => {
+    if (isMobile) {
+      closeWindow(win.id);
+      return;
+    }
     const confirmed = await showModal(
       "Close window",
       `Close "${win.title}"?`,
       "confirm",
     );
     if (confirmed) closeWindow(win.id);
-  }, [win.id, win.title, showModal, closeWindow]);
+  }, [win.id, win.title, showModal, closeWindow, isMobile]);
 
   const AppContent = appContentMap[win.appId];
 
@@ -184,12 +189,14 @@ export function Window({ window: win }: { window: WindowInstance }) {
     <div
       className={`absolute flex flex-col overflow-hidden transition-[opacity,border-radius] duration-200 ${win.minimized ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       style={{
-        left: win.maximized ? 0 : win.x,
-        top: win.maximized ? 0 : win.y,
-        width: win.maximized ? "100%" : win.width,
-        height: win.maximized ? "calc(100% - 56px)" : win.height,
+        left: win.maximized || isMobile ? 0 : win.x,
+        top: win.maximized || isMobile ? 0 : win.y,
+        width: win.maximized || isMobile ? "100%" : win.width,
+        height: win.maximized || isMobile
+          ? isMobile ? "calc(100% - 64px)" : "calc(100% - 56px)"
+          : win.height,
         zIndex: win.zIndex,
-        borderRadius: win.maximized ? 0 : 18,
+        borderRadius: win.maximized || isMobile ? 0 : 18,
         ...glass,
         backdropFilter: "blur(24px) saturate(140%)",
         WebkitBackdropFilter: "blur(24px) saturate(140%)",
@@ -199,49 +206,54 @@ export function Window({ window: win }: { window: WindowInstance }) {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {/* Title bar */}
+      {/* Title bar — taller on mobile for touch */}
       <div
-        className="flex h-11 shrink-0 items-center gap-2.5 px-4 select-none"
+        className={`flex shrink-0 items-center gap-2.5 px-4 select-none ${isMobile ? "h-12" : "h-11"}`}
         style={{
           background: isActive ? "rgba(0,0,0,0.025)" : "rgba(0,0,0,0.012)",
           borderBottom: "1px solid rgba(0,0,0,0.06)",
-          cursor: dragging ? "grabbing" : "default",
+          cursor: dragging ? "grabbing" : isMobile ? "default" : "default",
         }}
         onPointerDown={onPointerDownTitle}
-        onDoubleClick={() => toggleMaximizeWindow(win.id)}
+        onDoubleClick={() => { if (!isMobile) toggleMaximizeWindow(win.id); }}
       >
-        <AppIcon className="w-4 h-4 opacity-55" />
+        <AppIcon className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} opacity-55`} />
         <span
-          className="flex-1 text-[13px] font-medium truncate select-none"
+          className={`flex-1 font-medium truncate select-none ${isMobile ? "text-[14px]" : "text-[13px]"}`}
           style={{ color: "#1d1a28" }}
         >
           {win.title}
         </span>
-        <div className="flex items-center gap-1.5">
-          <WinButton
-            onClick={(e) => {
-              e.stopPropagation();
-              minimizeWindow(win.id);
-            }}
-          >
-            <MinimizeIconSvg />
-          </WinButton>
-          <WinButton
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMaximizeWindow(win.id);
-            }}
-          >
-            {win.maximized ? <RestoreIconSvg /> : <MaximizeIconSvg />}
-          </WinButton>
+        <div className={`flex items-center ${isMobile ? "gap-2" : "gap-1.5"}`}>
+          {!isMobile && (
+            <>
+              <WinButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  minimizeWindow(win.id);
+                }}
+              >
+                <MinimizeIconSvg />
+              </WinButton>
+              <WinButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMaximizeWindow(win.id);
+                }}
+              >
+                {win.maximized ? <RestoreIconSvg /> : <MaximizeIconSvg />}
+              </WinButton>
+            </>
+          )}
           <WinButton
             onClick={(e) => {
               e.stopPropagation();
               handleClose();
             }}
             hoverBg="rgba(239,68,68,0.55)"
+            size={isMobile ? "lg" : "sm"}
           >
-            <CloseIconSvg />
+            <CloseIconSvg size={isMobile ? "lg" : "sm"} />
           </WinButton>
         </div>
       </div>
@@ -254,8 +266,28 @@ export function Window({ window: win }: { window: WindowInstance }) {
         {AppContent ? <AppContent window={win} /> : <DefaultApp window={win} />}
       </div>
 
-      {/* Resize handles */}
-      {!win.maximized && (
+      {/* Mobile gesture bar — visual affordance for swiping/closing */}
+      {isMobile && (
+        <div
+          className="shrink-0 flex items-center justify-center h-7"
+          style={{
+            background: "rgba(0,0,0,0.015)",
+            borderTop: "1px solid rgba(0,0,0,0.05)",
+          }}
+        >
+          <div
+            className="rounded-full"
+            style={{
+              width: 36,
+              height: 4,
+              background: "rgba(0,0,0,0.18)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Resize handles — desktop only */}
+      {!win.maximized && !isMobile && (
         <>
           <div
             className="absolute inset-x-0 top-0"
@@ -307,16 +339,21 @@ function WinButton({
   onClick,
   hoverBg = "rgba(0,0,0,0.07)",
   children,
+  size = "sm",
 }: {
   onClick: (e: React.MouseEvent) => void;
   hoverBg?: string;
   children: React.ReactNode;
+  size?: "sm" | "lg";
 }) {
   const [hovered, setHovered] = useState(false);
+  const dim = size === "lg" ? 32 : 28;
   return (
     <button
-      className="flex h-7 w-7 items-center justify-center rounded-[10px] transition-all duration-150"
+      className="flex items-center justify-center rounded-[10px] transition-all duration-150"
       style={{
+        width: dim,
+        height: dim,
         color: hovered ? "rgba(0,0,0,0.60)" : "rgba(0,0,0,0.28)",
         background: hovered ? hoverBg : "transparent",
       }}
@@ -329,7 +366,7 @@ function WinButton({
   );
 }
 
-function MinimizeIconSvg() {
+function MinimizeIconSvg({ size: _s }: { size?: "sm" | "lg" }) {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10">
       <rect
@@ -343,7 +380,7 @@ function MinimizeIconSvg() {
     </svg>
   );
 }
-function MaximizeIconSvg() {
+function MaximizeIconSvg({ size: _s }: { size?: "sm" | "lg" }) {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10">
       <rect
@@ -359,7 +396,7 @@ function MaximizeIconSvg() {
     </svg>
   );
 }
-function RestoreIconSvg() {
+function RestoreIconSvg({ size: _s }: { size?: "sm" | "lg" }) {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10">
       <rect
@@ -385,13 +422,15 @@ function RestoreIconSvg() {
     </svg>
   );
 }
-function CloseIconSvg() {
+function CloseIconSvg({ size: _s }: { size?: "sm" | "lg" }) {
+  const dim = _s === "lg" ? 12 : 10;
+  const sw = _s === "lg" ? 1.5 : 1.2;
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10">
+    <svg width={dim} height={dim} viewBox="0 0 10 10">
       <path
         d="M1.5 1.5l7 7M8.5 1.5l-7 7"
         stroke="currentColor"
-        strokeWidth="1.2"
+        strokeWidth={sw}
         strokeLinecap="round"
       />
     </svg>

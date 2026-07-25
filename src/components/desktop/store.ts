@@ -63,6 +63,10 @@ interface DesktopState {
   appRegistry: AppDefinition[];
   modal: ModalState;
   nextZIndex: number;
+  isMobile: boolean;
+
+  // Responsive
+  setIsMobile: (v: boolean) => void;
 
   // Auth
   isHydrated: boolean;
@@ -134,7 +138,16 @@ function centerWindow(app: AppDefinition, overrides?: Partial<WindowInstance>) {
   const h = overrides?.height ?? app.defaultHeight;
   const vw = typeof window !== "undefined" ? window.innerWidth : 1440;
   const vh = typeof window !== "undefined" ? window.innerHeight : 900;
-  const taskbarH = 56;
+  const taskbarH = vw < 768 ? 64 : 56; // taller dock on mobile
+  // On mobile, windows fill the screen
+  if (vw < 768) {
+    return {
+      x: 0,
+      y: 0,
+      width: vw,
+      height: vh - taskbarH,
+    };
+  }
   return {
     x: Math.max(0, (vw - w) / 2),
     y: Math.max(0, (vh - taskbarH - h) / 2),
@@ -159,6 +172,7 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   appRegistry: defaultApps,
   modal: { open: false, title: "", message: "", type: "alert" },
   nextZIndex: 10,
+  isMobile: false,
 
   // Auth — starts unauthenticated; hydrateAuth runs on client mount
   isHydrated: false,
@@ -168,6 +182,8 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   loginError: null,
 
   // ── Window actions ─────────────────────────────────────────────────────
+
+  setIsMobile: (v) => set({ isMobile: v }),
 
   openWindow: (appId, overrides) => {
     const app = get().appRegistry.find((a) => a.id === appId);

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { type WindowInstance } from "../store";
+import { type WindowInstance, useDesktopStore } from "../store";
 
 export function TerminalApp({ window: _win }: { window: WindowInstance }) {
+  const isMobile = useDesktopStore((s) => s.isMobile);
   const [input, setInput] = useState("");
   const [lines, setLines] = useState<string[]>([
     "InfinityOS Terminal v1.0",
@@ -30,20 +31,20 @@ export function TerminalApp({ window: _win }: { window: WindowInstance }) {
 
   return (
     <div
-      className="flex h-full flex-col p-4 font-mono text-[13px] leading-relaxed"
+      className={`flex h-full flex-col font-mono leading-relaxed ${isMobile ? "p-3 text-[14px]" : "p-4 text-[13px]"}`}
       style={{ background: "rgba(248,247,244,0.88)", color: "#3a5c2f" }}
       onClick={() => document.getElementById("term-inp")?.focus()}
     >
       <div className="flex-1 overflow-auto whitespace-pre-wrap">
         {lines.map((line, i) => (<div key={i}>{line}</div>))}
       </div>
-      <div className="flex items-center gap-2 mt-1.5">
+      <div className={`flex items-center gap-2 ${isMobile ? "mt-2" : "mt-1.5"}`}>
         <span style={{ color: "#3a5a8a" }}>$</span>
         <input
           id="term-inp" type="text" value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleCommand(input); }}
-          className="flex-1 bg-transparent outline-none" style={{ color: "#3a5c2f" }} autoFocus
+          className="flex-1 bg-transparent outline-none py-1" style={{ color: "#3a5c2f", fontSize: "inherit" }} autoFocus
         />
       </div>
     </div>

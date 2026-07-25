@@ -5,7 +5,7 @@ import { useDesktopStore } from "./store";
 import { CloseIcon } from "./icons";
 
 export function Modal() {
-  const { modal, closeModal } = useDesktopStore();
+  const { modal, closeModal, isMobile } = useDesktopStore();
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -39,18 +39,18 @@ export function Modal() {
 
       {/* Modal — frosted glass, light theme */}
       <div
-        className="relative z-10 w-full max-w-sm overflow-hidden"
+        className={`relative z-10 w-full overflow-hidden ${isMobile ? "mx-3" : "max-w-sm"}`}
         style={{
           background: "rgba(255,255,252,0.82)",
           backdropFilter: "blur(32px) saturate(160%)",
           WebkitBackdropFilter: "blur(32px) saturate(160%)",
-          borderRadius: 20,
+          borderRadius: isMobile ? 18 : 20,
           border: "1px solid rgba(0,0,0,0.07)",
           boxShadow: "0 8px 48px rgba(80,60,100,0.14), 0 0 0 1px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.6)",
         }}
       >
         {/* Title */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+        <div className={`flex items-center justify-between ${isMobile ? "px-5 py-3.5" : "px-6 py-4"}`} style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
           <h3 className="text-[15px] font-medium" style={{ color: "#1d1a28" }}>{modal.title}</h3>
           <button
             onClick={() => closeModal(null)}
@@ -62,7 +62,7 @@ export function Modal() {
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">
+        <div className={`${isMobile ? "px-5 py-4" : "px-6 py-5"}`}>
           <p className="text-[14px] leading-relaxed" style={{ color: "#3d3a4d" }}>{modal.message}</p>
           {modal.type === "prompt" && (
             <input ref={inputRef} type="text" value={inputValue}
@@ -77,7 +77,7 @@ export function Modal() {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2.5 px-6 py-4" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+        <div className={`flex justify-end gap-2.5 ${isMobile ? "px-5 py-3.5" : "px-6 py-4"}`} style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
           {modal.type === "confirm" || modal.type === "prompt" ? (
             <>
               <button onClick={() => closeModal(false)}

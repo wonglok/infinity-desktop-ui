@@ -9,14 +9,35 @@ import { DesktopIcon } from "./DesktopIcon";
 import { Modal } from "./Modal";
 import { LoginScreen } from "./LoginScreen";
 
+const MOBILE_BP = 768;
+
 export function Desktop() {
-  const { windows, desktopIcons, closeStartMenu, isHydrated, isAuthenticated, hydrateAuth } =
-    useDesktopStore();
+  const {
+    windows,
+    desktopIcons,
+    closeStartMenu,
+    isHydrated,
+    isAuthenticated,
+    hydrateAuth,
+    isMobile,
+    setIsMobile,
+  } = useDesktopStore();
 
   // Restore persisted session on client mount — avoids SSR hydration mismatch
   useEffect(() => {
     hydrateAuth();
   }, [hydrateAuth]);
+
+  // Detect screen size — switches between desktop and mobile modes
+  useEffect(() => {
+    function check() {
+      const mobile = window.innerWidth < MOBILE_BP;
+      setIsMobile(mobile);
+    }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [setIsMobile]);
 
   // Wait until auth is hydrated before rendering anything
   if (!isHydrated) {
@@ -33,10 +54,25 @@ export function Desktop() {
     <div className="fixed inset-0 overflow-hidden select-none">
       <Background />
 
-      <div className="absolute inset-0 bottom-14" onClick={() => closeStartMenu()}>
-        {desktopIcons.map((icon) => (
-          <DesktopIcon key={icon.id} icon={icon} />
-        ))}
+      {/* Desktop icon area — absolute positioned on desktop, grid on mobile */}
+      <div
+        className="absolute inset-0"
+        style={{ bottom: isMobile ? 64 : 56 }}
+        onClick={() => closeStartMenu()}
+      >
+        {isMobile ? (
+          <div className="h-full overflow-y-auto px-4 py-6">
+            <div className="grid grid-cols-4 gap-4 max-w-sm mx-auto">
+              {desktopIcons.map((icon) => (
+                <DesktopIcon key={icon.id} icon={icon} mobile />
+              ))}
+            </div>
+          </div>
+        ) : (
+          desktopIcons.map((icon) => (
+            <DesktopIcon key={icon.id} icon={icon} />
+          ))
+        )}
       </div>
 
       {windows.map((win) => (

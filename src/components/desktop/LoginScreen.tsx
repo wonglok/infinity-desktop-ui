@@ -45,19 +45,22 @@ export function LoginScreen() {
       <Background />
 
       {/* Time / date */}
-      <div className="absolute top-24 w-full text-center z-10">
-        <div className="text-8xl font-extralight tracking-tight" style={{ color: "#1d1a28" }}>
+      <div className="absolute top-12 md:top-24 w-full text-center z-10 px-4">
+        <div
+          className="text-5xl sm:text-7xl md:text-8xl font-extralight tracking-tight"
+          style={{ color: "#1d1a28" }}
+        >
           <LiveClock />
         </div>
-        <div className="mt-3 text-[15px] font-light" style={{ color: "#5e5a70" }}>
+        <div className="mt-2 md:mt-3 text-[13px] md:text-[15px] font-light" style={{ color: "#5e5a70" }}>
           <LiveDate />
         </div>
       </div>
 
       {/* Login card */}
-      <div className="relative z-10 w-full max-w-md mx-4">
+      <div className="relative z-10 w-full max-w-md mx-3 md:mx-4">
         <div
-          className="rounded-[22px] overflow-hidden"
+          className="rounded-[20px] md:rounded-[22px] overflow-hidden"
           style={{
             background: "rgba(255,255,252,0.64)",
             backdropFilter: "blur(32px) saturate(160%)",
@@ -65,24 +68,24 @@ export function LoginScreen() {
             boxShadow: "0 4px 40px rgba(80,60,100,0.10), 0 0 0 1px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6)",
           }}
         >
-          <div className="px-10 pt-10 pb-8">
+          <div className="px-6 md:px-10 pt-8 md:pt-10 pb-6 md:pb-8">
             {/* Avatar */}
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-5 md:mb-6">
               <div
-                className="flex h-24 w-24 items-center justify-center rounded-full text-white"
+                className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-full text-white"
                 style={{
                   background: "linear-gradient(135deg, rgba(124,111,212,0.65), rgba(160,140,220,0.5))",
                   boxShadow: "0 0 48px rgba(124,111,212,0.18), 0 0 0 1px rgba(255,255,255,0.6)",
                 }}
               >
-                <UserIcon className="w-10 h-10" />
+                <UserIcon className="w-8 h-8 md:w-10 md:h-10" />
               </div>
             </div>
 
-            <h2 className="text-center text-xl font-medium tracking-wide mb-1.5" style={{ color: "#1d1a28" }}>
+            <h2 className="text-center text-lg md:text-xl font-medium tracking-wide mb-1 md:mb-1.5" style={{ color: "#1d1a28" }}>
               Welcome back
             </h2>
-            <p className="text-center text-[14px] mb-8" style={{ color: "#5e5a70" }}>
+            <p className="text-center text-[13px] md:text-[14px] mb-6 md:mb-8" style={{ color: "#5e5a70" }}>
               Sign in to your cloud
             </p>
 
@@ -95,7 +98,7 @@ export function LoginScreen() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3.5 md:space-y-4">
               <div>
                 <label htmlFor="login-username" className="block text-[13px] font-medium mb-2" style={{ color: "#4a4658" }}>
                   Username
@@ -135,7 +138,7 @@ export function LoginScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[13px] pt-1">
+              <div className="flex items-center justify-between text-[12px] md:text-[13px] pt-1 flex-wrap gap-y-2">
                 <label className="flex items-center gap-2 cursor-pointer" style={{ color: "#4a4658" }}>
                   <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="rounded accent-[#7c6fd4] w-4 h-4" />
                   <span>Remember me</span>
@@ -146,7 +149,7 @@ export function LoginScreen() {
               </div>
 
               <button type="submit" disabled={loginLoading}
-                className="w-full flex items-center justify-center gap-2.5 rounded-[14px] py-3 text-[15px] font-medium transition-all duration-200 mt-1"
+                className="w-full flex items-center justify-center gap-2.5 rounded-[14px] py-3 md:py-3 text-[14px] md:text-[15px] font-medium transition-all duration-200 mt-1 touch-target"
                 style={loginLoading ? {
                   background: "rgba(124,111,212,0.25)", color: "rgba(255,255,255,0.7)", cursor: "wait",
                 } : {
@@ -170,7 +173,7 @@ export function LoginScreen() {
           </div>
         </div>
 
-        <p className="mt-5 text-center text-[13px]" style={{ color: "#6b6680" }}>
+        <p className="mt-4 md:mt-5 text-center text-[12px] md:text-[13px] px-4" style={{ color: "#6b6680" }}>
           Press Enter to submit · Any credentials (min. 2 characters)
         </p>
       </div>

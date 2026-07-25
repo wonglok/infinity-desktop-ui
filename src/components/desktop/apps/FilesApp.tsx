@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { type WindowInstance } from "../store";
+import { type WindowInstance, useDesktopStore } from "../store";
 import {
   DocumentIcon, ImageIcon, MusicIcon, VideoIcon,
   DownloadIcon, ArrowLeftIcon, ArrowRightIcon,
@@ -147,6 +147,7 @@ function PreviewColumn({ entry }: { entry: FSEntry }) {
 // ── FilesApp ────────────────────────────────────────────────────────────────
 
 export function FilesApp({ window: _win }: { window: WindowInstance }) {
+  const isMobile = useDesktopStore((s) => s.isMobile);
   const [columns, setColumns] = useState<FSEntry[][]>([mockFS]);
   const [selected, setSelected] = useState<number[]>([]);
   const [previewEntry, setPreviewEntry] = useState<FSEntry | null>(null);
@@ -183,6 +184,52 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const selInCol = (ci: number) => selected[ci] ?? -1;
   const totalCols = columns.length + (hasPreview ? 1 : 0);
 
+  // Mobile: single-column drill-down
+  if (isMobile) {
+    const currentCol = columns[columns.length - 1];
+    return (
+      <div className="flex h-full flex-col">
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 px-3 py-2.5 shrink-0"
+          style={{ background: "rgba(0,0,0,0.018)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <button onClick={goBack} disabled={!canGoBack}
+            className="flex items-center justify-center w-8 h-8 rounded-[10px] transition-colors touch-target"
+            style={{ color: canGoBack ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.15)", cursor: canGoBack ? "pointer" : "default" }}
+          ><ArrowLeftIcon className="w-4 h-4" /></button>
+          <span className="flex-1 text-[13px] font-medium truncate" style={{ color: "#1d1a28" }}>
+            {columns.length > 1 ? columns[columns.length - 2][selInCol(columns.length - 2)]?.name ?? "Files" : "Files"}
+          </span>
+          <span className="text-[11px]" style={{ color: "#9b96a8" }}>{currentCol.length} items</span>
+        </div>
+
+        {/* Single column */}
+        <div className="flex-1 overflow-y-auto">
+          {currentCol.map((entry, fi) => {
+            const Icon = fileIcon(entry);
+            return (
+              <button key={fi}
+                className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-left transition-colors outline-none"
+                style={{ borderBottom: "1px solid rgba(0,0,0,0.03)", color: "#3d3a4d" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.03)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                onClick={() => { selectColumn(columns.length - 1, fi); navigate(columns.length - 1, entry); }}
+              >
+                <span className="opacity-55"><Icon className="w-5 h-5 shrink-0" /></span>
+                <span className="truncate flex-1">{entry.name}</span>
+                {entry.kind === "folder" && <span className="text-[11px] opacity-30 shrink-0">›</span>}
+                {entry.size && <span className="text-[11px] shrink-0" style={{ color: "#9b96a8" }}>{entry.size}</span>}
+              </button>
+            );
+          })}
+          {currentCol.length === 0 && (
+            <div className="px-4 py-12 text-center text-[14px]" style={{ color: "#9b96a8" }}>Empty folder</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: multi-column browser
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}

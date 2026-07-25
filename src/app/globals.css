@@ -1,8 +1,95 @@
 @import "tailwindcss";
 
+/* ── Design tokens — Infinity Cloud Desktop UI ────────────────────────────
+   Mirrors DESIGN.md token table. Used by all glass-surface components.
+   Mobile breakpoint: < 768px (matches Tailwind `md:`). */
+
 :root {
+  /* Palette */
+  --bg-base: #f7f5f8;
+  --bg-glass-active: rgba(255, 255, 252, 0.76);
+  --bg-glass-inactive: rgba(255, 255, 252, 0.60);
+  --bg-glass-modal: rgba(255, 255, 252, 0.82);
+  --bg-content: rgba(250, 249, 246, 0.60);
+  --bg-input: rgba(0, 0, 0, 0.03);
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(0, 0, 0, 0.06);
+  --bg-titlebar-active: rgba(0, 0, 0, 0.025);
+  --bg-titlebar-inactive: rgba(0, 0, 0, 0.012);
+
+  /* Ink */
+  --ink-primary: #1d1a28;
+  --ink-secondary: #3d3a4d;
+  --ink-muted: #5e5a70;
+  --ink-label: #4a4658;
+  --ink-hint: #6b6680;
+  --ink-faint: #9b96a8;
+
+  /* Accent */
+  --accent: #7c6fd4;
+  --accent-soft: rgba(124, 111, 212, 0.55);
+  --accent-hover: rgba(124, 111, 212, 0.70);
+  --accent-light: rgba(124, 111, 212, 0.15);
+  --accent-selection: rgba(124, 111, 212, 0.20);
+  --accent-gradient: linear-gradient(135deg, rgba(124, 111, 212, 0.65), rgba(160, 140, 220, 0.5));
+  --accent-glow: 0 0 48px rgba(124, 111, 212, 0.18);
+
+  /* Error */
+  --error-text: #c41e1e;
+  --error-bg: rgba(239, 68, 68, 0.06);
+  --error-border: rgba(239, 68, 68, 0.18);
+
+  /* Glass */
+  --glass-blur: blur(24px) saturate(140%);
+  --glass-blur-heavy: blur(32px) saturate(160%);
+  --glass-blur-light: blur(3px);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --glass-border-light: rgba(0, 0, 0, 0.06);
+  --glass-divider: rgba(0, 0, 0, 0.08);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+
+  /* Shadows */
+  --shadow-window-inactive: 0 2px 18px rgba(80, 60, 100, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-window-active: 0 4px 32px rgba(80, 60, 100, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 8px 48px rgba(80, 60, 100, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-menu: 0 4px 48px rgba(80, 60, 100, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-taskbar: 0 -2px 16px rgba(80, 60, 100, 0.06);
+  --shadow-button: 0 4px 20px rgba(124, 111, 212, 0.18);
+
+  /* Radii */
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-input: 14px;
+  --radius-window: 18px;
+  --radius-modal: 20px;
+  --radius-card: 22px;
+
+  /* Metrics */
+  --taskbar-h: 56px;
+  --window-titlebar-h: 44px;
+  --font-ui: 13px;
+  --font-body: 14px;
+  --font-heading: 15px;
+
+  /* Light theme */
   --background: #ffffff;
   --foreground: #171717;
+}
+
+/* Mobile overrides */
+@media (max-width: 767px) {
+  :root {
+    --taskbar-h: 64px;
+    --radius-window: 16px;
+    --radius-modal: 18px;
+    --radius-card: 20px;
+    --font-ui: 14px;
+    --font-body: 15px;
+    --font-heading: 16px;
+    --shadow-modal: 0 4px 32px rgba(80, 60, 100, 0.18);
+    --glass-blur: blur(16px) saturate(130%);
+    --glass-blur-heavy: blur(20px) saturate(140%);
+  }
 }
 
 @theme inline {
@@ -22,5 +109,37 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+}
+
+/* ── Utility classes (tree-shakeable via Tailwind v4) ───────────────────── */
+
+/* Frosted glass surface — shared by windows, modals, menus */
+.glass-surface {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-surface-heavy {
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--glass-border);
+}
+
+/* Touch-friendly minimum tap targets */
+@media (max-width: 767px) {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Hide scrollbars but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
