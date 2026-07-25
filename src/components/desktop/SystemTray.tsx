@@ -34,10 +34,10 @@ export function SystemTray() {
         </button>
       ))}
 
-      <div className={`flex flex-col items-end justify-center h-full leading-tight rounded-[10px] cursor-default ${isMobile ? "px-2.5 text-[12px]" : "px-3.5 text-[13px]"}`}
+      <div className={`flex flex-col items-end justify-center h-full leading-tight rounded-[10px] cursor-default ${isMobile ? "px-2.5 text-[13px]" : "px-3.5 text-[12px]"}`}
         style={{ color: "#3d3a4d" }}>
         <span>{time || "--:--"}</span>
-        {!isMobile && <span style={{ color: "#6b6680", fontSize: "11px" }}>{date}</span>}
+        {!isMobile && <span style={{ color: "#6b6680", fontSize: "10px" }}>{date}</span>}
       </div>
     </div>
   );

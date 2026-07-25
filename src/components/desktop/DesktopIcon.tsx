@@ -56,7 +56,7 @@ export function DesktopIcon({ icon, mobile = false }: DesktopIconProps) {
           <AppIcon className="w-8 h-8" />
         </div>
         <span
-          className="text-[13px] leading-tight max-w-[72px] truncate rounded-md px-1.5 py-0.5"
+          className="text-[12px] leading-tight max-w-[72px] truncate rounded-md px-1.5 py-0.5"
           style={{
             color: selected ? "#1d1a28" : "rgba(29,26,40,0.55)",
             background: selected ? "rgba(124,111,212,0.15)" : "transparent",
@@ -83,18 +83,26 @@ export function DesktopIcon({ icon, mobile = false }: DesktopIconProps) {
       onMouseLeave={() => setHovered(false)}
       onBlur={() => setSelected(false)}
     >
-      <div
-        className="flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-150"
-        style={{
-          background: selected ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.02)",
-          boxShadow: selected ? "0 0 16px rgba(124,111,212,0.12)" : "none",
-          color: selected ? "#1d1a28" : "#4a4658",
-        }}
-      >
-        <AppIcon className="w-7 h-7" />
+      <div data-impeccable-variants="8ab4a072" data-impeccable-variant-count="1" style={{ display: "contents" }}>
+        {/* impeccable-variants-start 8ab4a072 */}
+        {/* Original */}
+        <div data-impeccable-variant="original">
+          <div
+            className="flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-150"
+            style={{
+              background: selected ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.02)",
+              boxShadow: selected ? "0 0 16px rgba(124,111,212,0.12)" : "none",
+              color: selected ? "#1d1a28" : "#4a4658",
+            }}
+          >
+            <AppIcon className="w-7 h-7" />
+          </div>
+        </div>
+        {/* Variants: insert below this line */}
+        {/* impeccable-variants-end 8ab4a072 */}
       </div>
       <span
-        className="text-[13px] leading-tight max-w-[80px] truncate rounded-md px-1.5 py-0.5"
+        className="text-[12px] leading-tight max-w-[80px] truncate rounded-md px-1.5 py-0.5"
         style={{
           color: selected ? "#1d1a28" : "rgba(29,26,40,0.55)",
           background: selected ? "rgba(124,111,212,0.15)" : "transparent",

@@ -67,9 +67,13 @@
   /* Metrics */
   --taskbar-h: 56px;
   --window-titlebar-h: 44px;
-  --font-ui: 13px;
-  --font-body: 14px;
-  --font-heading: 15px;
+
+  /* Type scale — clear hierarchy, not a flat 13–15 cluster */
+  --font-caption: 11px;    /* dates, fine print, metadata */
+  --font-ui: 12px;         /* taskbar labels, tray, small controls */
+  --font-body: 14px;       /* content, modals, menu items, prose */
+  --font-heading: 17px;    /* window titles, section headers, card titles */
+  --font-display: 20px;    /* login card heading, large modal titles */
 
   /* Light theme */
   --background: #ffffff;
@@ -83,9 +87,10 @@
     --radius-window: 16px;
     --radius-modal: 18px;
     --radius-card: 20px;
-    --font-ui: 14px;
-    --font-body: 15px;
+    --font-ui: 13px;
+    --font-body: 14px;
     --font-heading: 16px;
+    --font-display: 18px;
     --shadow-modal: 0 4px 32px rgba(80, 60, 100, 0.18);
     --glass-blur: blur(16px) saturate(130%);
     --glass-blur-heavy: blur(20px) saturate(140%);
@@ -101,8 +106,49 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Dark glass base — deep violet-black, not terminal #0a0a0a */
+    --background: #121118;
+    --foreground: #e8e6ed;
+
+    /* Glass surfaces become tinted dark glass */
+    --bg-glass-active: rgba(35, 32, 45, 0.78);
+    --bg-glass-inactive: rgba(35, 32, 45, 0.62);
+    --bg-glass-modal: rgba(35, 32, 45, 0.84);
+    --bg-content: rgba(28, 26, 36, 0.65);
+    --bg-input: rgba(255, 255, 255, 0.06);
+    --bg-hover: rgba(255, 255, 255, 0.06);
+    --bg-active: rgba(255, 255, 255, 0.09);
+    --bg-titlebar-active: rgba(255, 255, 255, 0.04);
+    --bg-titlebar-inactive: rgba(255, 255, 255, 0.02);
+
+    /* Ink — softer whites with purple lean */
+    --ink-primary: #eeecf3;
+    --ink-secondary: #cbc8d4;
+    --ink-muted: #a6a2b2;
+    --ink-label: #b8b4c2;
+    --ink-hint: #8a86a0;
+    --ink-faint: #68647a;
+
+    /* Accent — brighter for dark contrast */
+    --accent: #9b8aee;
+    --accent-soft: rgba(155, 138, 238, 0.60);
+    --accent-hover: rgba(155, 138, 238, 0.78);
+    --accent-light: rgba(155, 138, 238, 0.18);
+    --accent-selection: rgba(155, 138, 238, 0.24);
+
+    /* Glass — darker borders, cooler blur */
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-light: rgba(255, 255, 255, 0.06);
+    --glass-divider: rgba(255, 255, 255, 0.09);
+    --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    /* Shadows — cooler tinted for dark surfaces */
+    --shadow-window-inactive: 0 2px 18px rgba(0, 0, 0, 0.30);
+    --shadow-window-active: 0 4px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --shadow-modal: 0 8px 48px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --shadow-menu: 0 4px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --shadow-taskbar: 0 -2px 16px rgba(0, 0, 0, 0.25);
+    --shadow-button: 0 4px 20px rgba(155, 138, 238, 0.22);
   }
 }
 

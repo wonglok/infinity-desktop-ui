@@ -64,7 +64,7 @@ export function SettingsApp({ window: _win }: { window: WindowInstance }) {
 function SettingsContent({ active }: { active: string }) {
   return (
     <div>
-      <h3 className="text-[16px] font-medium mb-6" style={{ color: "#1d1a28" }}>{active}</h3>
+      <h3 className="text-[17px] font-semibold mb-6" style={{ color: "#1d1a28" }}>{active}</h3>
       <div className="space-y-5 text-[14px]" style={{ color: "#3d3a4d" }}>
         {active === "Display" && (
           <>

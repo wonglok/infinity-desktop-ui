@@ -52,7 +52,7 @@ export function LoginScreen() {
         >
           <LiveClock />
         </div>
-        <div className="mt-2 md:mt-3 text-[13px] md:text-[15px] font-light" style={{ color: "#5e5a70" }}>
+        <div className="mt-2 md:mt-3 text-[12px] md:text-[14px] font-light" style={{ color: "#5e5a70" }}>
           <LiveDate />
         </div>
       </div>
@@ -85,7 +85,7 @@ export function LoginScreen() {
             <h2 className="text-center text-lg md:text-xl font-medium tracking-wide mb-1 md:mb-1.5" style={{ color: "#1d1a28" }}>
               Welcome back
             </h2>
-            <p className="text-center text-[13px] md:text-[14px] mb-6 md:mb-8" style={{ color: "#5e5a70" }}>
+            <p className="text-center text-[12px] md:text-[14px] mb-6 md:mb-8" style={{ color: "#5e5a70" }}>
               Sign in to your cloud
             </p>
 
@@ -100,7 +100,7 @@ export function LoginScreen() {
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-3.5 md:space-y-4">
               <div>
-                <label htmlFor="login-username" className="block text-[13px] font-medium mb-2" style={{ color: "#4a4658" }}>
+                <label htmlFor="login-username" className="block text-[12px] font-medium mb-2" style={{ color: "#4a4658" }}>
                   Username
                 </label>
                 <input ref={usernameRef} id="login-username" type="text"
@@ -114,7 +114,7 @@ export function LoginScreen() {
               </div>
 
               <div>
-                <label htmlFor="login-password" className="block text-[13px] font-medium mb-2" style={{ color: "#4a4658" }}>
+                <label htmlFor="login-password" className="block text-[12px] font-medium mb-2" style={{ color: "#4a4658" }}>
                   Password
                 </label>
                 <div className="relative">

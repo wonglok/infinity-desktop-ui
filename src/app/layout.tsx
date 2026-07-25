@@ -37,12 +37,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
 
-        {/* impeccable-live-start */}
-        {process.env.NODE_ENV === "development" && (
-          <script src="http://localhost:8400/live.js"></script>
-        )}
-        {/* impeccable-live-end */}
-      </body>
+              {/* impeccable-live-start */}
+<script src="http://localhost:8400/live.js"></script>
+{/* impeccable-live-end */}
+</body>
     </html>
   );
 }

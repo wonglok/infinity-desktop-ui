@@ -43,7 +43,7 @@ export function Taskbar() {
           onMouseLeave={(e) => { if (!startMenuOpen) e.currentTarget.style.background = "transparent"; }}
         >
           <StartIcon className={isMobile ? "w-6 h-6 opacity-75" : "w-5 h-5 opacity-75"} />
-          {!isMobile && <span className="text-[13px] hidden sm:inline font-medium">Start</span>}
+          {!isMobile && <span className="text-[12px] hidden sm:inline font-medium">Start</span>}
         </button>
 
         {/* Separator + running apps — desktop only */}
@@ -56,7 +56,7 @@ export function Taskbar() {
                 const AppIcon = getIcon(win.icon);
                 return (
                   <button key={win.id}
-                    className="flex items-center gap-1.5 h-10 px-3.5 rounded-[12px] text-[13px] transition-all duration-150 shrink-0"
+                    className="flex items-center gap-1.5 h-10 px-3.5 rounded-[12px] text-[12px] transition-all duration-150 shrink-0"
                     style={{
                       background: active ? "rgba(0,0,0,0.06)" : "transparent",
                       color: active ? "#1d1a28" : "rgba(29,26,40,0.50)",

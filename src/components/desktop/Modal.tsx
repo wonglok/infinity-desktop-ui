@@ -51,7 +51,7 @@ export function Modal() {
       >
         {/* Title */}
         <div className={`flex items-center justify-between ${isMobile ? "px-5 py-3.5" : "px-6 py-4"}`} style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-          <h3 className="text-[15px] font-medium" style={{ color: "#1d1a28" }}>{modal.title}</h3>
+          <h3 className="text-[17px] font-semibold" style={{ color: "#1d1a28" }}>{modal.title}</h3>
           <button
             onClick={() => closeModal(null)}
             className="flex h-7 w-7 items-center justify-center rounded-[10px] transition-colors"

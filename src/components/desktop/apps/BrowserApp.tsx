@@ -31,7 +31,7 @@ export function BrowserApp({ window: _win }: { window: WindowInstance }) {
       <div className="flex-1 flex items-center justify-center" style={{ background: "rgba(250,249,246,0.44)" }}>
         <div className="text-center px-4">
           <GlobeIcon className={`mx-auto ${isMobile ? "w-16 h-16" : "w-20 h-20"} mb-4 md:mb-5 opacity-18`} />
-          <h2 className={`${isMobile ? "text-[16px]" : "text-[18px]"} font-medium`} style={{ color: "#1d1a28" }}>Infinity Cloud Browser</h2>
+          <h2 className={`${isMobile ? "text-[16px]" : "text-[20px]"} font-semibold`} style={{ color: "#1d1a28" }}>Infinity Cloud Browser</h2>
           <p className={`${isMobile ? "text-[13px]" : "text-[14px]"} mt-2`} style={{ color: "#6b6680" }}>Ready to explore the cloud.</p>
         </div>
       </div>

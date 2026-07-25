@@ -219,7 +219,7 @@ export function Window({ window: win }: { window: WindowInstance }) {
       >
         <AppIcon className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} opacity-55`} />
         <span
-          className={`flex-1 font-medium truncate select-none ${isMobile ? "text-[14px]" : "text-[13px]"}`}
+          className={`flex-1 font-semibold truncate select-none ${isMobile ? "text-[16px]" : "text-[17px]"}`}
           style={{ color: "#1d1a28" }}
         >
           {win.title}

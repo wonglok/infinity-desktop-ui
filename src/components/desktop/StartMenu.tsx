@@ -48,7 +48,7 @@ export function StartMenu() {
         </div>
         <div>
           <div className="text-[15px] font-medium" style={{ color: "#1d1a28" }}>{user?.username ?? "User"}</div>
-          <div className="text-[13px] mt-0.5" style={{ color: "#5e5a70" }}>
+          <div className="text-[12px] mt-0.5" style={{ color: "#5e5a70" }}>
             {user?.username ? `${user.username.toLowerCase()}@infinity-os` : "user@infinity-os"}
           </div>
         </div>
