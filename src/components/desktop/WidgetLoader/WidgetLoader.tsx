@@ -68,7 +68,7 @@ export function WidgetLoader({
     <>
       {/*  */}
       {loading}
-      <div ref={ref}></div>
+      <div className="w-full h-full" ref={ref}></div>
     </>
   );
 }

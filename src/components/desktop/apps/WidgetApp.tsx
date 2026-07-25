@@ -36,14 +36,17 @@ function WidgetCard({
         background: "rgba(255,255,252,0.64)",
         border: "1px solid rgba(0,0,0,0.07)",
         borderRadius: 16,
-        boxShadow: "0 1px 8px rgba(80,60,100,0.04), inset 0 1px 0 rgba(255,255,255,0.6)",
+        boxShadow:
+          "0 1px 8px rgba(80,60,100,0.04), inset 0 1px 0 rgba(255,255,255,0.6)",
       }}
     >
       <div
         className={`flex items-center gap-2 ${isMobile ? "px-3 py-2.5" : "px-4 py-3"}`}
         style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
       >
-        <Icon className={`${isMobile ? "w-4 h-4" : "w-3.5 h-3.5"} opacity-50`} />
+        <Icon
+          className={`${isMobile ? "w-4 h-4" : "w-3.5 h-3.5"} opacity-50`}
+        />
         <span
           className={`${isMobile ? "text-[13px]" : "text-[12px]"} font-semibold uppercase tracking-wide opacity-50`}
           style={{ color: "#1d1a28" }}
@@ -51,9 +54,7 @@ function WidgetCard({
           {title}
         </span>
       </div>
-      <div className={`flex-1 ${isMobile ? "p-3" : "p-4"}`}>
-        {children}
-      </div>
+      <div className={`flex-1 ${isMobile ? "p-3" : "p-4"}`}>{children}</div>
     </div>
   );
 }
@@ -81,8 +82,17 @@ export function WidgetApp({ window: _win }: { window: WindowInstance }) {
     setNotes((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  const timeStr = clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const dateStr = clock.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const timeStr = clock.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const dateStr = clock.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 
   const grid = isMobile
     ? "grid grid-cols-1 gap-3 p-3"
@@ -152,7 +162,10 @@ export function WidgetApp({ window: _win }: { window: WindowInstance }) {
               </span>
             </div>
           ))}
-          <div className={`flex items-center gap-2 ${isMobile ? "text-[13px]" : "text-[12px]"}`} style={{ color: "#6b6680" }}>
+          <div
+            className={`flex items-center gap-2 ${isMobile ? "text-[13px]" : "text-[12px]"}`}
+            style={{ color: "#6b6680" }}
+          >
             <WifiIcon className={`${isMobile ? "w-4 h-4" : "w-3.5 h-3.5"}`} />
             <span>Infinity Cloud · Connected</span>
           </div>
@@ -164,7 +177,10 @@ export function WidgetApp({ window: _win }: { window: WindowInstance }) {
         <div className="flex flex-col h-full">
           <div className="flex-1 space-y-1.5 mb-3">
             {notes.length === 0 && (
-              <p className={`${isMobile ? "text-[13px]" : "text-[12px]"} opacity-45`} style={{ color: "#6b6680" }}>
+              <p
+                className={`${isMobile ? "text-[13px]" : "text-[12px]"} opacity-45`}
+                style={{ color: "#6b6680" }}
+              >
                 No notes yet.
               </p>
             )}
@@ -174,8 +190,12 @@ export function WidgetApp({ window: _win }: { window: WindowInstance }) {
                 onClick={() => removeNote(i)}
                 className={`${isMobile ? "text-[13px] py-1.5 px-2.5" : "text-[12px] py-1 px-2"} rounded-lg cursor-pointer transition-colors`}
                 style={{ color: "#3d3a4d" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(239,68,68,0.08)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
               >
                 {note}
               </div>
@@ -186,7 +206,9 @@ export function WidgetApp({ window: _win }: { window: WindowInstance }) {
               type="text"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") addNote(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addNote();
+              }}
               placeholder="Add a note…"
               className={`flex-1 bg-transparent outline-none rounded-lg ${isMobile ? "text-[13px] py-2 px-3" : "text-[12px] py-1.5 px-2.5"}`}
               style={{
@@ -201,8 +223,12 @@ export function WidgetApp({ window: _win }: { window: WindowInstance }) {
                 color: "#fff",
                 background: "#5b5a6e",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#4a4960")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#5b5a6e")}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#4a4960")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "#5b5a6e")
+              }
             >
               Add
             </button>
@@ -224,10 +250,16 @@ export function WidgetApp({ window: _win }: { window: WindowInstance }) {
           >
             24°C
           </p>
-          <p className={`${isMobile ? "text-[13px]" : "text-[12px]"} mt-1`} style={{ color: "#6b6680" }}>
+          <p
+            className={`${isMobile ? "text-[13px]" : "text-[12px]"} mt-1`}
+            style={{ color: "#6b6680" }}
+          >
             Sunny · San Francisco
           </p>
-          <div className={`flex justify-center gap-4 ${isMobile ? "mt-3 text-[13px]" : "mt-3 text-[12px]"}`} style={{ color: "#6b6680" }}>
+          <div
+            className={`flex justify-center gap-4 ${isMobile ? "mt-3 text-[13px]" : "mt-3 text-[12px]"}`}
+            style={{ color: "#6b6680" }}
+          >
             <span>H: 28°</span>
             <span>L: 18°</span>
             <span>💧 45%</span>

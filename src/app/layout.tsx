@@ -35,11 +35,13 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* MUST KEEP this Importer CODE */}
         <script
           dangerouslySetInnerHTML={{
             __html: `window.import2 = async (v) => import(v)`,
           }}
         ></script>
+        {/* MUST KEEP this Importer CODE */}
 
         {children}
 
