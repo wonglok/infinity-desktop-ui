@@ -196,9 +196,12 @@ export function Window({ window: win }: { window: WindowInstance }) {
         left: win.maximized || isMobile ? 0 : win.x,
         top: win.maximized || isMobile ? 0 : win.y,
         width: win.maximized || isMobile ? "100%" : win.width,
-        height: win.maximized || isMobile
-          ? isMobile ? "calc(100% - 64px)" : "calc(100% - 56px)"
-          : win.height,
+        height:
+          win.maximized || isMobile
+            ? isMobile
+              ? "calc(100% - 64px)"
+              : "calc(100% - 56px)"
+            : win.height,
         zIndex: win.zIndex,
         borderRadius: win.maximized || isMobile ? 0 : 18,
         ...glass,
@@ -219,7 +222,9 @@ export function Window({ window: win }: { window: WindowInstance }) {
           cursor: dragging ? "grabbing" : isMobile ? "default" : "default",
         }}
         onPointerDown={onPointerDownTitle}
-        onDoubleClick={() => { if (!isMobile) toggleMaximizeWindow(win.id); }}
+        onDoubleClick={() => {
+          if (!isMobile) toggleMaximizeWindow(win.id);
+        }}
       >
         <AppIcon className={`${isMobile ? "w-5 h-5" : "w-4 h-4"} opacity-55`} />
         <span

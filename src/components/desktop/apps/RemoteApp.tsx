@@ -1,7 +1,7 @@
 "use client";
 
 import { type WindowInstance } from "../store";
-import { WidgetLoader } from "../WidgetLoader/WidgetLoader";
+import { RemoteAppLoader } from "../RemoteApp/RemoteAppLoader";
 
 export function RemoteApp({ window: _win }: { window: WindowInstance }) {
   // console.log(_win);
@@ -10,9 +10,19 @@ export function RemoteApp({ window: _win }: { window: WindowInstance }) {
       className="h-full w-full"
       style={{ background: "rgba(250,249,246,0.44)" }}
     >
-      <WidgetLoader
-        origin={`https://infinity-widget.vercel.app`}
-      ></WidgetLoader>
+      <RemoteAppLoader
+        user={{
+          id: "userID_u123456",
+          username: "wonglok831",
+          email: "lok@lok.com",
+        }}
+        app={{
+          name: "loklok cool widget",
+          origin: `https://infinity-widget.vercel.app`,
+        }}
+      ></RemoteAppLoader>
     </div>
   );
 }
+
+//

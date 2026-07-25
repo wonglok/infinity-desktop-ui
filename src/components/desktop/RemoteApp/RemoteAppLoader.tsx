@@ -1,8 +1,15 @@
 import path from "path";
 import { useEffect, useRef, useState } from "react";
 
-export function WidgetLoader({
-  origin = `https://infinity-widget.vercel.app`,
+export function RemoteAppLoader({
+  app = { name: "happy app", origin: `https://infinity-widget.vercel.app` },
+  user = null,
+}: {
+  app: {
+    origin: string;
+    name: string;
+  };
+  user: any;
 }) {
   let ref = useRef(null);
   let [loading, setLoading] = useState<any>(
@@ -18,7 +25,7 @@ export function WidgetLoader({
     let domain =
       process.env.NODE_ENV === "development"
         ? `http://localhost:3002`
-        : `${origin}`;
+        : `${app.origin}`;
 
     let basepath = `${domain}/generated/widget`;
     let manfiest = `${basepath}/manifest.json`;
@@ -44,7 +51,7 @@ export function WidgetLoader({
             console.log(core, ref.current);
 
             core
-              .install({ domElement: ref.current })
+              .install({ domElement: ref.current, user, app })
               .then((v: () => void) => {
                 clean = v;
                 setLoading(null);
@@ -62,7 +69,7 @@ export function WidgetLoader({
     return () => {
       clean();
     };
-  }, []);
+  }, [app.origin, JSON.stringify({ user, app })]);
 
   return (
     <>

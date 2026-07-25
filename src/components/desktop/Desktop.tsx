@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useDesktopStore } from "./store";
 import { Background } from "./Background";
 import { Window } from "./Window";
@@ -21,6 +21,7 @@ export function Desktop() {
     hydrateAuth,
     isMobile,
     setIsMobile,
+    openWindow,
   } = useDesktopStore();
 
   // Restore persisted session on client mount — avoids SSR hydration mismatch
@@ -39,11 +40,18 @@ export function Desktop() {
     return () => window.removeEventListener("resize", check);
   }, [setIsMobile]);
 
+  // Auto-start the remote app after login (once per mount)
+  const hasAutoStarted = useRef(false);
+  useEffect(() => {
+    if (isAuthenticated && !hasAutoStarted.current) {
+      hasAutoStarted.current = true;
+      openWindow("remote");
+    }
+  }, [isAuthenticated, openWindow]);
+
   // Wait until auth is hydrated before rendering anything
   if (!isHydrated) {
-    return (
-      <div className="fixed inset-0" style={{ background: "#f7f5f8" }} />
-    );
+    return <div className="fixed inset-0" style={{ background: "#f7f5f8" }} />;
   }
 
   if (!isAuthenticated) {
@@ -69,9 +77,7 @@ export function Desktop() {
             </div>
           </div>
         ) : (
-          desktopIcons.map((icon) => (
-            <DesktopIcon key={icon.id} icon={icon} />
-          ))
+          desktopIcons.map((icon) => <DesktopIcon key={icon.id} icon={icon} />)
         )}
       </div>
 
