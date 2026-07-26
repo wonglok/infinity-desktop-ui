@@ -1,7 +1,7 @@
 import path from "path";
 import { useEffect, useRef, useState } from "react";
 
-export function RemoteAppLoader({
+export function AppLoader({
   app = {
     id: "myappid-001",
     name: "happy app",
