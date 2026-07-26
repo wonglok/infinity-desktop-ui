@@ -63,7 +63,11 @@ export function Window({ window: win }: { window: WindowInstance }) {
     resizeWindow,
     showModal,
     isMobile,
+    appRegistry,
   } = useDesktopStore();
+
+  const appDef = appRegistry.find((a) => a.id === win.appId);
+  const isRemoteApp = Boolean(appDef?.origin);
 
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState<ResizeDir>(null);
@@ -187,7 +191,7 @@ export function Window({ window: win }: { window: WindowInstance }) {
     if (confirmed) closeWindow(win.id);
   }, [win.id, win.title, showModal, closeWindow, isMobile]);
 
-  const AppContent = appContentMap[win.appId];
+  const AppContent = isRemoteApp ? RemoteApp : appContentMap[win.appId];
 
   return (
     <div

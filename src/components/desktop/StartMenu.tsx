@@ -5,7 +5,7 @@ import { useDesktopStore } from "./store";
 import { getIcon, PowerIcon, UserIcon } from "./icons";
 
 export function StartMenu() {
-  const { startMenuOpen, closeStartMenu, openWindow, appRegistry, user, logout, showModal, isMobile } =
+  const { startMenuOpen, closeStartMenu, openWindow, appRegistry, user, logout, showModal, isMobile, openAddAppModal } =
     useDesktopStore();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +72,18 @@ export function StartMenu() {
             </button>
           );
         })}
+
+        {/* Add App button */}
+        <button
+          className={`flex w-full items-center gap-3.5 text-[14px] transition-colors text-left ${isMobile ? "px-5 py-3" : "px-5 py-2.5"}`}
+          style={{ color: "#5b4db0" }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,111,212,0.08)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          onClick={() => openAddAppModal()}
+        >
+          <PlusIcon className="w-5 h-5 opacity-65" />
+          <span className="font-medium">Add Remote App</span>
+        </button>
       </div>
 
       {/* Sign out */}
@@ -92,5 +104,24 @@ export function StartMenu() {
         </button>
       </div>
     </div>
+  );
+}
+
+// ── Inline icon ──────────────────────────────────────────────────────────────
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8M8 12h8" />
+    </svg>
   );
 }

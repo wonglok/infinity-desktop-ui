@@ -8,6 +8,7 @@ import { Taskbar } from "./Taskbar";
 import { DesktopIcon } from "./DesktopIcon";
 import { Modal } from "./Modal";
 import { LoginScreen } from "./LoginScreen";
+import { AddAppModal } from "./AddAppModal";
 
 const MOBILE_BP = 768;
 
@@ -87,6 +88,7 @@ export function Desktop() {
 
       <Taskbar />
       <Modal />
+      <AddAppModal />
     </div>
   );
 }

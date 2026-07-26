@@ -33,6 +33,7 @@ export interface AppDefinition {
   id: string;
   name: string;
   icon: string;
+  origin?: string; // remote app URL — renders via AppLoader when set
   defaultWidth: number;
   defaultHeight: number;
   minWidth: number;
@@ -59,6 +60,7 @@ interface DesktopState {
   windows: WindowInstance[];
   activeWindowId: string | null;
   startMenuOpen: boolean;
+  addAppModalOpen: boolean;
   desktopIcons: DesktopIconDef[];
   appRegistry: AppDefinition[];
   modal: ModalState;
@@ -94,6 +96,10 @@ interface DesktopState {
   toggleStartMenu: () => void;
   closeStartMenu: () => void;
 
+  // Add app modal
+  openAddAppModal: () => void;
+  closeAddAppModal: () => void;
+
   // Modal
   showModal: (
     title: string,
@@ -115,6 +121,14 @@ interface DesktopState {
 
   // App registry
   registerApp: (app: AppDefinition) => void;
+  addRemoteApp: (app: {
+    name: string;
+    icon: string;
+    origin: string;
+    baseId?: string;
+  }) => void;
+  addDesktopIcon: (icon: DesktopIconDef) => void;
+  removeDesktopIcon: (id: string) => void;
 }
 
 // ── Default desktop icons ──────────────────────────────────────────────────
@@ -222,6 +236,7 @@ const defaultApps: AppDefinition[] = [
     id: "remote",
     name: "Infinity Apps",
     icon: "monitor",
+    origin: "https://infinity-widget.vercel.app",
     defaultWidth: 800,
     defaultHeight: 540,
     minWidth: 500,
@@ -266,6 +281,7 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   windows: [],
   activeWindowId: null,
   startMenuOpen: false,
+  addAppModalOpen: false,
   desktopIcons: defaultIcons,
   appRegistry: defaultApps,
   modal: { open: false, title: "", message: "", type: "alert" },
@@ -386,6 +402,11 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   toggleStartMenu: () => set((s) => ({ startMenuOpen: !s.startMenuOpen })),
   closeStartMenu: () => set({ startMenuOpen: false }),
 
+  // ── Add app modal ───────────────────────────────────────────────────────
+
+  openAddAppModal: () => set({ addAppModalOpen: true, startMenuOpen: false }),
+  closeAddAppModal: () => set({ addAppModalOpen: false }),
+
   // ── Modal ──────────────────────────────────────────────────────────────
 
   showModal: (title, message, type = "alert", options) => {
@@ -501,5 +522,83 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
       }
       return { appRegistry: [...s.appRegistry, app] };
     });
+  },
+
+  // Register a remote app AND create a desktop icon in one call.
+  // baseId is optional — defaults to a sanitised version of name.
+  addRemoteApp: ({ name, icon, origin, baseId }) => {
+    const appId = baseId ?? `remote-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now()}`;
+    const iconId = `icon-${appId}`;
+
+    const appDef: AppDefinition = {
+      id: appId,
+      name,
+      icon,
+      origin,
+      defaultWidth: 800,
+      defaultHeight: 540,
+      minWidth: 500,
+      minHeight: 340,
+    };
+
+    // Find the next available icon position on the desktop
+    const existingIcons = get().desktopIcons;
+    const colX = 28;
+    const startY = 28;
+    const rowHeight = 112;
+    const maxIconsPerCol = 7;
+    const colWidth = 140;
+
+    // Place in the next available column (right-most icons)
+    let col = 0;
+    if (existingIcons.length > 0) {
+      // Place new icon after the last one
+      const nextIndex = existingIcons.length;
+      col = Math.floor(nextIndex / maxIconsPerCol);
+      const row = nextIndex % maxIconsPerCol;
+      const x = colX + col * colWidth;
+      const y = startY + row * rowHeight;
+
+      const iconDef: DesktopIconDef = {
+        id: iconId,
+        label: name,
+        icon,
+        appId,
+        x,
+        y,
+      };
+
+      set((s) => ({
+        appRegistry: [...s.appRegistry, appDef],
+        desktopIcons: [...s.desktopIcons, iconDef],
+      }));
+      return;
+    }
+
+    const iconDef: DesktopIconDef = {
+      id: iconId,
+      label: name,
+      icon,
+      appId,
+      x: colX,
+      y: startY,
+    };
+
+    set((s) => ({
+      appRegistry: [...s.appRegistry, appDef],
+      desktopIcons: [...s.desktopIcons, iconDef],
+    }));
+  },
+
+  addDesktopIcon: (icon) => {
+    set((s) => ({
+      desktopIcons: [...s.desktopIcons, icon],
+    }));
+  },
+
+  removeDesktopIcon: (id) => {
+    set((s) => ({
+      desktopIcons: s.desktopIcons.filter((i) => i.id !== id),
+    }));
   },
 }));

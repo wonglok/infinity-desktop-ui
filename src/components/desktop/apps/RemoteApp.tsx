@@ -1,11 +1,14 @@
 "use client";
 
-import { type WindowInstance } from "../store";
-import { AppLoader } from "../RemoteApp/AppLoader";
+import { type WindowInstance, useDesktopStore } from "../store";
+import { AppLoader } from "../AppLoader/AppLoader";
 
 export function RemoteApp({ window: _win }: { window: WindowInstance }) {
-  // console.log(_win);
-  //
+  const appRegistry = useDesktopStore((s) => s.appRegistry);
+  const appDef = appRegistry.find((a) => a.id === _win.appId);
+
+  const origin = appDef?.origin ?? "https://infinity-widget.vercel.app";
+  const appName = appDef?.name ?? _win.title;
 
   return (
     <div
@@ -20,8 +23,8 @@ export function RemoteApp({ window: _win }: { window: WindowInstance }) {
         }}
         app={{
           id: _win.id,
-          name: "loklok cool widget",
-          origin: `https://infinity-widget.vercel.app`,
+          name: appName,
+          origin,
         }}
       ></AppLoader>
     </div>
