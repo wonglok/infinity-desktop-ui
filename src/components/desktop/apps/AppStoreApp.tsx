@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useDesktopStore, type WindowInstance, type AppDefinition } from "../store";
+import {
+  useDesktopStore,
+  type WindowInstance,
+  type AppDefinition,
+} from "../store";
 import { getIcon, SearchIcon, TrashIcon, ExternalLinkIcon } from "../icons";
 
 // ── System apps that cannot be removed ─────────────────────────────────────
@@ -11,7 +15,6 @@ const SYSTEM_APPS = new Set([
   "terminal",
   "browser",
   "settings",
-  "widgets",
   "appstore",
 ]);
 
@@ -99,10 +102,7 @@ export function AppStoreApp({ window: _win }: { window: WindowInstance }) {
             >
               AppStore
             </h2>
-            <p
-              className="text-[13px] mt-0.5"
-              style={{ color: "#5e5a70" }}
-            >
+            <p className="text-[13px] mt-0.5" style={{ color: "#5e5a70" }}>
               Manage your installed applications
             </p>
           </div>
@@ -233,9 +233,7 @@ function StatBadge({
       <span
         className="text-[12px] font-semibold rounded-full px-2 py-0.5"
         style={{
-          background: accent
-            ? "rgba(124,111,212,0.12)"
-            : "rgba(0,0,0,0.05)",
+          background: accent ? "rgba(124,111,212,0.12)" : "rgba(0,0,0,0.05)",
           color: accent ? "#5b4db0" : "#3d3a4d",
         }}
       >

@@ -73,7 +73,9 @@ export function DesktopIcon({ icon, mobile = false }: DesktopIconProps) {
     <button
       className="flex flex-col items-center gap-2 p-3 w-24 rounded-2xl text-center transition-all duration-150 select-none outline-none"
       style={{
-        position: "absolute", left: icon.x, top: icon.y,
+        position: "absolute",
+        left: icon.x,
+        top: icon.y,
         background: selected || hovered ? "rgba(0,0,0,0.04)" : "transparent",
         boxShadow: selected ? "0 0 0 1px rgba(0,0,0,0.08)" : "none",
       }}
@@ -83,7 +85,11 @@ export function DesktopIcon({ icon, mobile = false }: DesktopIconProps) {
       onMouseLeave={() => setHovered(false)}
       onBlur={() => setSelected(false)}
     >
-      <div data-impeccable-variants="8ab4a072" data-impeccable-variant-count="1" style={{ display: "contents" }}>
+      <div
+        data-impeccable-variants="8ab4a072"
+        data-impeccable-variant-count="1"
+        style={{ display: "contents" }}
+      >
         {/* impeccable-variants-start 8ab4a072 */}
         {/* Original */}
         <div data-impeccable-variant="original">

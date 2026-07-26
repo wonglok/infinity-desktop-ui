@@ -170,14 +170,6 @@ const defaultIcons: DesktopIconDef[] = [
     y: 364,
   },
   {
-    id: "icon-widgets",
-    label: "Widgets",
-    icon: "monitor",
-    appId: "widgets",
-    x: 28,
-    y: 476,
-  },
-  {
     id: "icon-appstore",
     label: "AppStore",
     icon: "store",
@@ -225,15 +217,6 @@ const defaultApps: AppDefinition[] = [
     defaultHeight: 480,
     minWidth: 460,
     minHeight: 340,
-  },
-  {
-    id: "widgets",
-    name: "Widgets",
-    icon: "monitor",
-    defaultWidth: 720,
-    defaultHeight: 520,
-    minWidth: 440,
-    minHeight: 360,
   },
   {
     id: "appstore",
@@ -608,7 +591,6 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
       "terminal",
       "browser",
       "settings",
-      "widgets",
       "appstore",
     ]);
     if (SYSTEM_APPS.has(appId)) return;

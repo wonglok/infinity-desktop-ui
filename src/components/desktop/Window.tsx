@@ -13,7 +13,6 @@ import {
   TerminalApp,
   BrowserApp,
   SettingsApp,
-  WidgetApp,
   DefaultApp,
   AppStoreApp,
 } from "./apps";
@@ -47,7 +46,6 @@ const appContentMap: Record<
   terminal: TerminalApp,
   browser: BrowserApp,
   settings: SettingsApp,
-  widgets: WidgetApp,
   appstore: AppStoreApp,
 };
 
