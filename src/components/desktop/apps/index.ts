@@ -5,3 +5,4 @@ export { SettingsApp } from "./SettingsApp";
 export { DefaultApp } from "./DefaultApp";
 export { WidgetApp } from "./WidgetApp";
 export { RemoteApp } from "./RemoteApp";
+export { AppStoreApp } from "./AppStoreApp";

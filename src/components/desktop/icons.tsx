@@ -302,6 +302,55 @@ export function CloseIcon(p: IconProps) {
   );
 }
 
+/* ── AppStore ────────────────────────────────────────────────────────── */
+
+export function StoreIcon(p: IconProps) {
+  return i(
+    <>
+      <path d="M3 9.5 5 21h14l2-11.5" />
+      <path d="M3 9.5h18" />
+      <path d="M8.5 9.5V7a3.5 3.5 0 1 1 7 0v2.5" />
+      <circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none" />
+    </>,
+    p.className,
+  );
+}
+
+export function TrashIcon(p: IconProps) {
+  return i(
+    <>
+      <path d="M4 7h16" />
+      <path d="M6.5 7v11.5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V7" />
+      <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" />
+      <path d="M10 10.5v5" />
+      <path d="M14 10.5v5" />
+    </>,
+    p.className,
+  );
+}
+
+export function SearchIcon(p: IconProps) {
+  return i(
+    <>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.5 15.5 21 21" />
+    </>,
+    p.className,
+  );
+}
+
+export function ExternalLinkIcon(p: IconProps) {
+  return i(
+    <>
+      <path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+      <path d="M21 3 10 14" />
+      <path d="M21 8V3h-5" />
+    </>,
+    p.className,
+  );
+}
+
 /* ── Icon resolver — maps store icon keys to SVG components ─────────── */
 
 const iconMap: Record<string, React.ComponentType<IconProps>> = {
@@ -331,6 +380,10 @@ const iconMap: Record<string, React.ComponentType<IconProps>> = {
   "arrow-right": ArrowRightIcon,
   refresh: RefreshIcon,
   close: CloseIcon,
+  store: StoreIcon,
+  trash: TrashIcon,
+  search: SearchIcon,
+  "external-link": ExternalLinkIcon,
   globe2: GlobeIcon,
   lock2: LockIcon,
 };

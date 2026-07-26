@@ -16,6 +16,7 @@ import {
   WidgetApp,
   RemoteApp,
   DefaultApp,
+  AppStoreApp,
 } from "./apps";
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ const appContentMap: Record<
   settings: SettingsApp,
   widgets: WidgetApp,
   remote: RemoteApp,
+  appstore: AppStoreApp,
 };
 
 // ── Window ─────────────────────────────────────────────────────────────────

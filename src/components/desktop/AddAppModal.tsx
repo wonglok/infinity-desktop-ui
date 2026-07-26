@@ -28,7 +28,12 @@ const APP_ICON_KEYS = [
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function AddAppModal() {
-  const { addRemoteApp, isMobile, addAppModalOpen: open, closeAddAppModal: onClose } = useDesktopStore();
+  const {
+    addRemoteApp,
+    isMobile,
+    addAppModalOpen: open,
+    closeAddAppModal: onClose,
+  } = useDesktopStore();
 
   const [name, setName] = useState("");
   const [origin, setOrigin] = useState("");

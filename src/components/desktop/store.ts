@@ -129,6 +129,9 @@ interface DesktopState {
   }) => void;
   addDesktopIcon: (icon: DesktopIconDef) => void;
   removeDesktopIcon: (id: string) => void;
+
+  // App management
+  removeApp: (appId: string) => void;
 }
 
 // ── Default desktop icons ──────────────────────────────────────────────────
@@ -181,6 +184,14 @@ const defaultIcons: DesktopIconDef[] = [
     appId: "remote",
     x: 28,
     y: 588,
+  },
+  {
+    id: "icon-appstore",
+    label: "AppStore",
+    icon: "store",
+    appId: "appstore",
+    x: 28,
+    y: 700,
   },
 ];
 
@@ -241,6 +252,15 @@ const defaultApps: AppDefinition[] = [
     defaultHeight: 540,
     minWidth: 500,
     minHeight: 340,
+  },
+  {
+    id: "appstore",
+    name: "AppStore",
+    icon: "store",
+    defaultWidth: 820,
+    defaultHeight: 580,
+    minWidth: 560,
+    minHeight: 400,
   },
 ];
 
@@ -527,7 +547,12 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   // Register a remote app AND create a desktop icon in one call.
   // baseId is optional — defaults to a sanitised version of name.
   addRemoteApp: ({ name, icon, origin, baseId }) => {
-    const appId = baseId ?? `remote-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now()}`;
+    const appId =
+      baseId ??
+      `remote-${name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")}-${Date.now()}`;
     const iconId = `icon-${appId}`;
 
     const appDef: AppDefinition = {
@@ -587,6 +612,30 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     set((s) => ({
       appRegistry: [...s.appRegistry, appDef],
       desktopIcons: [...s.desktopIcons, iconDef],
+    }));
+  },
+
+  // ── App management ───────────────────────────────────────────────────────
+
+  // Remove an app from the registry, its desktop icons, and any open windows.
+  // Refuses to remove system apps (files, terminal, browser, settings, widgets,
+  // remote, appstore).
+  removeApp: (appId) => {
+    const SYSTEM_APPS = new Set([
+      "files",
+      "terminal",
+      "browser",
+      "settings",
+      "widgets",
+      "remote",
+      "appstore",
+    ]);
+    if (SYSTEM_APPS.has(appId)) return;
+
+    set((s) => ({
+      appRegistry: s.appRegistry.filter((a) => a.id !== appId),
+      desktopIcons: s.desktopIcons.filter((i) => i.appId !== appId),
+      windows: s.windows.filter((w) => w.appId !== appId),
     }));
   },
 

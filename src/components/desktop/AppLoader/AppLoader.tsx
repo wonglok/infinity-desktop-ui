@@ -27,10 +27,11 @@ export function AppLoader({
   );
 
   useEffect(() => {
-    let domain =
-      process.env.NODE_ENV === "development"
-        ? `http://localhost:3002`
-        : `${app.origin}`;
+    let domain = app.origin;
+
+    // process.env.NODE_ENV === "development"
+    //   ? `http://localhost:3002`
+    //   : `${app.origin}`;
 
     let basepath = `${domain}/generated/widget`;
     let manfiest = `${basepath}/manifest.json`;
@@ -54,6 +55,8 @@ export function AppLoader({
           .then((core: { install: any }) => {
             //
             // console.log(core, ref.current);
+            //
+
             core
               .install({ domElement: ref.current, user, app })
               .then((v: () => void) => {
