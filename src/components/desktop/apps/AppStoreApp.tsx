@@ -12,7 +12,6 @@ const SYSTEM_APPS = new Set([
   "browser",
   "settings",
   "widgets",
-  "remote",
   "appstore",
 ]);
 

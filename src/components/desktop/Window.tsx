@@ -14,12 +14,11 @@ import {
   BrowserApp,
   SettingsApp,
   WidgetApp,
-  RemoteApp,
   DefaultApp,
   AppStoreApp,
 } from "./apps";
 
-// ── Constants ──────────────────────────────────────────────────────────────
+import { AppLoader } from "./AppLoader/AppLoader";
 
 const RESIZE_HANDLE = 6;
 type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null;
@@ -49,7 +48,6 @@ const appContentMap: Record<
   browser: BrowserApp,
   settings: SettingsApp,
   widgets: WidgetApp,
-  remote: RemoteApp,
   appstore: AppStoreApp,
 };
 
@@ -193,7 +191,7 @@ export function Window({ window: win }: { window: WindowInstance }) {
     if (confirmed) closeWindow(win.id);
   }, [win.id, win.title, showModal, closeWindow, isMobile]);
 
-  const AppContent = isRemoteApp ? RemoteApp : appContentMap[win.appId];
+  const AppContent = appContentMap[win.appId];
 
   return (
     <div
@@ -283,7 +281,29 @@ export function Window({ window: win }: { window: WindowInstance }) {
         className="flex-1 overflow-auto"
         style={{ background: "rgba(250,249,246,0.60)" }}
       >
-        {AppContent ? <AppContent window={win} /> : <DefaultApp window={win} />}
+        {AppContent ? (
+          <AppContent window={win} />
+        ) : isRemoteApp ? (
+          <div
+            className="h-full w-full overflow-hidden relative"
+            style={{ background: "rgba(250,249,246,0.44)" }}
+          >
+            <AppLoader
+              user={{
+                id: "userID_u123456",
+                username: "wonglok831",
+                email: "lok@lok.com",
+              }}
+              app={{
+                id: win.id,
+                name: appDef?.name ?? win.title,
+                origin: appDef?.origin ?? "",
+              }}
+            />
+          </div>
+        ) : (
+          <DefaultApp window={win} />
+        )}
       </div>
 
       {/* Mobile gesture bar — visual affordance for swiping/closing */}

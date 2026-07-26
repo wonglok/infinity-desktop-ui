@@ -178,20 +178,12 @@ const defaultIcons: DesktopIconDef[] = [
     y: 476,
   },
   {
-    id: "icon-remote",
-    label: "Remote",
-    icon: "monitor",
-    appId: "remote",
-    x: 28,
-    y: 588,
-  },
-  {
     id: "icon-appstore",
     label: "AppStore",
     icon: "store",
     appId: "appstore",
     x: 28,
-    y: 700,
+    y: 588,
   },
 ];
 
@@ -242,16 +234,6 @@ const defaultApps: AppDefinition[] = [
     defaultHeight: 520,
     minWidth: 440,
     minHeight: 360,
-  },
-  {
-    id: "remote",
-    name: "Infinity Apps",
-    icon: "monitor",
-    origin: "https://infinity-widget.vercel.app",
-    defaultWidth: 800,
-    defaultHeight: 540,
-    minWidth: 500,
-    minHeight: 340,
   },
   {
     id: "appstore",
@@ -627,7 +609,6 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
       "browser",
       "settings",
       "widgets",
-      "remote",
       "appstore",
     ]);
     if (SYSTEM_APPS.has(appId)) return;

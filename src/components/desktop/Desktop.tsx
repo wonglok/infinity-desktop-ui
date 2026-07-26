@@ -41,12 +41,12 @@ export function Desktop() {
     return () => window.removeEventListener("resize", check);
   }, [setIsMobile]);
 
-  // Auto-start the remote app after login (once per mount)
+  // Auto-start the AppStore after login (once per mount)
   const hasAutoStarted = useRef(false);
   useEffect(() => {
     if (isAuthenticated && !hasAutoStarted.current) {
       hasAutoStarted.current = true;
-      openWindow("remote");
+      openWindow("appstore");
     }
   }, [isAuthenticated, openWindow]);
 
