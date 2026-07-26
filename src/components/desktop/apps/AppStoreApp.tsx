@@ -33,11 +33,12 @@ export function AppStoreApp({ window: _win }: { window: WindowInstance }) {
   const [search, setSearch] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  // Filter apps by search
+  // Filter apps by search, excluding self
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return appRegistry;
-    return appRegistry.filter(
+    const list = appRegistry.filter((a) => a.id !== "appstore");
+    if (!q) return list;
+    return list.filter(
       (a) =>
         a.name.toLowerCase().includes(q) ||
         a.id.toLowerCase().includes(q) ||
@@ -175,7 +176,7 @@ export function AppStoreApp({ window: _win }: { window: WindowInstance }) {
         )}
       </div>
 
-      {/* App list */}
+      {/* App grid */}
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div
@@ -190,9 +191,15 @@ export function AppStoreApp({ window: _win }: { window: WindowInstance }) {
             </p>
           </div>
         ) : (
-          <div className={`${isMobile ? "p-3" : "p-4"}`}>
+          <div
+            className={`${
+              isMobile
+                ? "grid grid-cols-2 gap-3 p-3"
+                : "grid grid-cols-3 gap-4 p-4"
+            }`}
+          >
             {filtered.map((app) => (
-              <AppRow
+              <AppGridItem
                 key={app.id}
                 app={app}
                 isSystem={SYSTEM_APPS.has(app.id)}
@@ -243,7 +250,7 @@ function StatBadge({
   );
 }
 
-function AppRow({
+function AppGridItem({
   app,
   isSystem,
   isRemoving,
@@ -263,65 +270,83 @@ function AppRow({
 
   return (
     <div
-      className={`flex items-center gap-3.5 rounded-[14px] transition-all duration-150 ${
-        isMobile ? "px-3 py-3" : "px-4 py-3"
-      }`}
+      className="flex flex-col rounded-[16px] overflow-hidden transition-all duration-150 "
       style={{
-        background: hovered ? "rgba(0,0,0,0.03)" : "transparent",
+        background: hovered
+          ? "rgba(255,255,252,0.70)"
+          : "rgba(255,255,252,0.45)",
+        border: "1px solid rgba(0,0,0,0.06)",
+        boxShadow: hovered
+          ? "0 2px 16px rgba(80,60,100,0.08)"
+          : "0 1px 4px rgba(0,0,0,0.03)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Icon */}
+      {/* Icon + name area — clickable to open */}
       <div
-        className={`flex items-center justify-center rounded-[12px] shrink-0 ${
-          isMobile ? "h-11 w-11" : "h-10 w-10"
+        // onClick={onOpen}
+        className={`flex flex-col items-center gap-3 w-full text-center ${
+          isMobile ? "px-3 pt-5 pb-4" : "px-4 pt-5 pb-4"
         }`}
-        style={{ background: "rgba(0,0,0,0.04)", color: "#4a4658" }}
+        style={{ background: "transparent" }}
       >
-        <AppIcon className={isMobile ? "w-6 h-6" : "w-5 h-5"} />
-      </div>
+        <div
+          className={`flex items-center justify-center rounded-[16px] transition-all duration-150 ${
+            isMobile ? "h-14 w-14" : "h-12 w-12"
+          }`}
+          style={{
+            background: hovered ? "rgba(124,111,212,0.10)" : "rgba(0,0,0,0.04)",
+            color: hovered ? "#5b4db0" : "#4a4658",
+          }}
+        >
+          <AppIcon className={isMobile ? "w-8 h-8" : "w-7 h-7"} />
+        </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span
-            className={`font-medium truncate ${isMobile ? "text-[15px]" : "text-[14px]"}`}
-            style={{ color: "#1d1a28" }}
-          >
-            {app.name}
-          </span>
-          {isSystem && (
+        <div className="min-w-0 w-full">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
             <span
-              className="text-[10px] font-medium uppercase tracking-wider rounded-full px-2 py-0.5 shrink-0"
-              style={{
-                background: "rgba(0,0,0,0.05)",
-                color: "rgba(0,0,0,0.40)",
-              }}
+              className={`font-semibold truncate ${isMobile ? "text-[14px]" : "text-[13px]"}`}
+              style={{ color: "#1d1a28" }}
             >
-              System
+              {app.name}
             </span>
-          )}
-          {!isSystem && app.origin && (
-            <span
-              className="text-[10px] font-medium uppercase tracking-wider rounded-full px-2 py-0.5 shrink-0"
-              style={{
-                background: "rgba(124,111,212,0.10)",
-                color: "#5b4db0",
-              }}
-            >
-              Remote
-            </span>
-          )}
+          </div>
+
+          {/* Badges */}
+          <div className="flex items-center justify-center gap-1.5">
+            {isSystem && (
+              <span
+                className="text-[9px] font-medium uppercase tracking-wider rounded-full px-2 py-0.5"
+                style={{
+                  background: "rgba(0,0,0,0.05)",
+                  color: "rgba(0,0,0,0.40)",
+                }}
+              >
+                System
+              </span>
+            )}
+            {!isSystem && app.origin && (
+              <span
+                className="text-[9px] font-medium uppercase tracking-wider rounded-full px-2 py-0.5"
+                style={{
+                  background: "rgba(124,111,212,0.10)",
+                  color: "#5b4db0",
+                }}
+              >
+                Remote
+              </span>
+            )}
+          </div>
         </div>
 
         {app.origin && (
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1 mt-0.5">
             <span style={{ color: "rgba(0,0,0,0.25)" }}>
-              <ExternalLinkIcon className="w-3 h-3 shrink-0" />
+              <ExternalLinkIcon className="w-2.5 h-2.5 shrink-0" />
             </span>
             <span
-              className="text-[12px] truncate"
+              className="text-[11px] truncate max-w-[120px]"
               style={{ color: "rgba(0,0,0,0.40)" }}
             >
               {app.origin}
@@ -330,18 +355,22 @@ function AppRow({
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        {/* Open button */}
+      {/* Actions bar */}
+      <div
+        className="flex items-center justify-center gap-2 pb-4"
+        style={{ borderTop: "none" }}
+      >
         <button
-          onClick={onOpen}
-          className={`rounded-[10px] transition-all duration-150 ${
-            isMobile ? "px-3.5 py-2" : "px-3 py-1.5"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
+          className={`rounded-[10px] transition-all duration-150 cursor-pointer ${
+            isMobile ? "px-4 py-2 text-[13px]" : "px-3.5 py-1.5 text-[12px]"
           }`}
           style={{
             background: "rgba(0,0,0,0.04)",
             color: "rgba(0,0,0,0.50)",
-            fontSize: isMobile ? "14px" : "13px",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = "rgba(0,0,0,0.08)";
@@ -355,13 +384,15 @@ function AppRow({
           Open
         </button>
 
-        {/* Remove button — only for user-installed apps */}
         {!isSystem && (
           <button
-            onClick={onRemove}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
             disabled={isRemoving}
             className={`flex items-center justify-center rounded-[10px] transition-all duration-150 disabled:opacity-40 ${
-              isMobile ? "h-9 w-9" : "h-8 w-8"
+              isMobile ? "h-9 w-9" : "h-7 w-7"
             }`}
             style={{ color: "rgba(0,0,0,0.30)" }}
             onMouseEnter={(e) => {
@@ -375,9 +406,9 @@ function AppRow({
             title={`Remove ${app.name}`}
           >
             {isRemoving ? (
-              <SpinnerIcon className="w-4 h-4" />
+              <SpinnerIcon className="w-3.5 h-3.5" />
             ) : (
-              <TrashIcon className="w-4 h-4" />
+              <TrashIcon className="w-3.5 h-3.5" />
             )}
           </button>
         )}
