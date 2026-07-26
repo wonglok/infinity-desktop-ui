@@ -42,6 +42,7 @@ export function AddAppModal() {
   const [submitting, setSubmitting] = useState(false);
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const submitRef = useRef<() => Promise<void>>(async () => {});
 
   // Focus name input on open + reset form
   useEffect(() => {
@@ -55,11 +56,15 @@ export function AddAppModal() {
     }
   }, [open]);
 
-  // ESC key to close
+  // ESC key to close, Enter to submit
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Enter") submitRef.current();
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -111,6 +116,7 @@ export function AddAppModal() {
       setSubmitting(false);
     }
   };
+  submitRef.current = handleSubmit;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {

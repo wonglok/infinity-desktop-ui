@@ -19,8 +19,11 @@ export function Modal() {
   useEffect(() => {
     if (!modal.open) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closeModal(null);
-      if (e.key === "Enter" && modal.type === "prompt") closeModal(inputValue);
+      if (e.key === "Escape") { closeModal(null); return; }
+      if (e.key === "Enter") {
+        if (modal.type === "prompt") closeModal(inputValue);
+        else closeModal(true);
+      }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
