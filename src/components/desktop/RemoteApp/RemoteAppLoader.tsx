@@ -53,7 +53,7 @@ export function RemoteAppLoader({
           .import2(`${widgetURL}`)
           .then((core: { install: any }) => {
             //
-            console.log(core, ref.current);
+            // console.log(core, ref.current);
 
             core
               .install({ domElement: ref.current, user, app })

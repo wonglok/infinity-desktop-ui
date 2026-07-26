@@ -7,7 +7,7 @@ export function RemoteApp({ window: _win }: { window: WindowInstance }) {
   // console.log(_win);
   return (
     <div
-      className="h-full w-full"
+      className="h-full w-full overflow-hidden relative"
       style={{ background: "rgba(250,249,246,0.44)" }}
     >
       <RemoteAppLoader
