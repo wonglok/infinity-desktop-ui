@@ -21,7 +21,7 @@ export function AppLoader({
     <>
       <div className="w-full h-full flex justify-center items-center">
         <Spinner></Spinner>
-        {` Loading...`}
+        <span className="ml-2 text-blue-400"> {` Loading...`}</span>
       </div>
     </>,
   );
@@ -54,7 +54,6 @@ export function AppLoader({
           .then((core: { install: any }) => {
             //
             // console.log(core, ref.current);
-
             core
               .install({ domElement: ref.current, user, app })
               .then((v: () => void) => {
