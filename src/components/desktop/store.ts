@@ -174,8 +174,8 @@ const defaultIcons: DesktopIconDef[] = [
     label: "AppStore",
     icon: "store",
     appId: "appstore",
-    x: 28,
-    y: 588,
+    x: 150,
+    y: 28,
   },
 ];
 
