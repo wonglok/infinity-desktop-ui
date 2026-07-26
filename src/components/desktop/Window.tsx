@@ -181,12 +181,15 @@ export function Window({ window: win }: { window: WindowInstance }) {
       closeWindow(win.id);
       return;
     }
-    const confirmed = await showModal(
-      "Close window",
-      `Close "${win.title}"?`,
-      "confirm",
-    );
-    if (confirmed) closeWindow(win.id);
+
+    closeWindow(win.id);
+
+    // const confirmed = await showModal(
+    //   "Close window",
+    //   `Close "${win.title}"?`,
+    //   "confirm",
+    // );
+    // if (confirmed) closeWindow(win.id);
   }, [win.id, win.title, showModal, closeWindow, isMobile]);
 
   const AppContent = appContentMap[win.appId];
