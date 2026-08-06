@@ -29,10 +29,6 @@ export function AppLoader({
   useEffect(() => {
     let domain = app.origin;
 
-    // process.env.NODE_ENV === "development"
-    //   ? `http://localhost:3002`
-    //   : `${app.origin}`;
-
     let basepath = `${domain}/generated/widget`;
     let manfiest = `${basepath}/manifest.json`;
 

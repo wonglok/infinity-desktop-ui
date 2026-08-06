@@ -109,9 +109,9 @@ export const defaultApps: AppDefinition[] = [
     ? ([
         {
           id: "devapp",
-          name: "DevelopmentApp",
+          name: "Developer",
           icon: "globe",
-          origin: "http://localhost:3002",
+          origin: "http://localhost:3001",
           defaultWidth: 800,
           defaultHeight: 540,
           minWidth: 500,

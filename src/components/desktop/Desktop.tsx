@@ -46,7 +46,11 @@ export function Desktop() {
   useEffect(() => {
     if (isAuthenticated && !hasAutoStarted.current) {
       hasAutoStarted.current = true;
-      openWindow("appstore");
+
+      if (process.env.NODE_ENV === "development") {
+        openWindow("devapp");
+      } else {
+      }
     }
   }, [isAuthenticated, openWindow]);
 
