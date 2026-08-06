@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { useDesktopStore } from "./store";
 import { Background } from "./Background";
 import { Window } from "./Window";
@@ -20,15 +21,30 @@ export function Desktop() {
     isHydrated,
     isAuthenticated,
     hydrateAuth,
+    setSession,
     isMobile,
     setIsMobile,
     openWindow,
   } = useDesktopStore();
 
-  // Restore persisted session on client mount — avoids SSR hydration mismatch
+  // Read next-auth session
+  const { data: session, status } = useSession();
+
+  // Sync next-auth session → Zustand store
   useEffect(() => {
-    hydrateAuth();
-  }, [hydrateAuth]);
+    if (status === "loading") return;
+
+    if (status === "authenticated" && session?.user) {
+      setSession({
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+      });
+    } else {
+      // unauthenticated — fall back to legacy localStorage if present
+      hydrateAuth();
+    }
+  }, [session, status, setSession, hydrateAuth]);
 
   // Detect screen size — switches between desktop and mobile modes
   useEffect(() => {
@@ -54,8 +70,8 @@ export function Desktop() {
     }
   }, [isAuthenticated, openWindow]);
 
-  // Wait until auth is hydrated before rendering anything
-  if (!isHydrated) {
+  // Wait until auth is hydrated AND session is loaded before rendering
+  if (!isHydrated || status === "loading") {
     return <div className="fixed inset-0" style={{ background: "#f7f5f8" }} />;
   }
 

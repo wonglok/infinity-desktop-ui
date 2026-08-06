@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, type FormEvent } from "react";
+import { signIn } from "next-auth/react";
 import { useDesktopStore } from "./store";
 import { Background } from "./Background";
 import { Modal } from "./Modal";
-import { EyeIcon, EyeOffIcon, UserIcon } from "./icons";
+import { EyeIcon, EyeOffIcon, UserIcon, GoogleIcon } from "./icons";
 
 export function LoginScreen() {
   const { login, loginLoading, loginError, clearLoginError, showModal } =
@@ -14,6 +15,7 @@ export function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const usernameRef = useRef<HTMLInputElement>(null);
 
   // Restore saved credentials on client mount (SSR-safe)
@@ -38,6 +40,15 @@ export function LoginScreen() {
     e.preventDefault();
     if (loginLoading) return;
     await login(username, password, rememberMe);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await signIn("google", { callbackUrl: "/" });
+    } catch {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -96,6 +107,46 @@ export function LoginScreen() {
                 {loginError}
               </div>
             )}
+
+            {/* Google Sign-In */}
+            <div className="mb-5">
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading || loginLoading}
+                className="w-full flex items-center justify-center gap-2.5 rounded-[14px] py-3 text-[14px] md:text-[15px] font-medium transition-all duration-200 touch-target"
+                style={{
+                  background: "#fff",
+                  color: "#1d1a28",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#fafafa"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.18)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)"; }}
+              >
+                {googleLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span>Signing in…</span>
+                  </>
+                ) : (
+                  <>
+                    <GoogleIcon className="w-5 h-5" />
+                    <span>Continue with Google</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
+              <span className="text-[12px] font-medium" style={{ color: "#8c88a0" }}>or</span>
+              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
+            </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-3.5 md:space-y-4">

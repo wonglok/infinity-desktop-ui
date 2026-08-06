@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SessionProvider } from "@/components/SessionProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,7 +44,7 @@ export default function RootLayout({
         ></script>
         {/* MUST KEEP this Importer CODE */}
 
-        {children}
+        <SessionProvider>{children}</SessionProvider>
 
         {/* impeccable-live-start */}
         <script src="http://localhost:8400/live.js"></script>

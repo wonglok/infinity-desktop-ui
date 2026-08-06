@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { signIn as nextAuthSignIn, signOut as nextAuthSignOut } from "next-auth/react";
 import { defaultIcons, defaultApps } from "./defaultAppInfo";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -52,8 +53,11 @@ export interface ModalState {
 }
 
 export interface User {
-  username: string;
-  avatar?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string;       // legacy: for local-login compatibility
+  avatar?: string;          // legacy
 }
 
 interface DesktopState {
@@ -112,6 +116,13 @@ interface DesktopState {
 
   // Auth
   hydrateAuth: () => void;
+  setSession: (
+    session: {
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    } | null,
+  ) => void;
   login: (
     username: string,
     password: string,
@@ -332,15 +343,25 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
 
   // ── Auth ────────────────────────────────────────────────────────────────
 
+  // Hydrate auth from next-auth session (call once on mount, after session loads)
   hydrateAuth: () => {
+    // next-auth session is read via useSession() in the component layer.
+    // This method is called from Desktop once the session is known.
+    // For backward compatibility: check localStorage for legacy credentials.
     try {
       const saved = localStorage.getItem("infinity-auth");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed?.username) {
+        if (parsed?.username || parsed?.name) {
           set({
             isAuthenticated: true,
-            user: { username: parsed.username },
+            user: {
+              name: parsed.name ?? parsed.username,
+              email: parsed.email ?? null,
+              image: parsed.image ?? parsed.avatar ?? null,
+              username: parsed.username,
+              avatar: parsed.avatar,
+            },
             isHydrated: true,
           });
           return;
@@ -350,46 +371,50 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     set({ isHydrated: true });
   },
 
-  login: async (username, password, rememberMe = false) => {
-    set({ loginLoading: true, loginError: null });
-
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 800 + Math.random() * 700));
-
-    if (username.trim().length < 2 || password.trim().length < 2) {
+  // Set session from next-auth (called when useSession provides data)
+  setSession: (session: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null) => {
+    if (session) {
       set({
-        loginLoading: false,
-        loginError: "Invalid username or password. Minimum 2 characters each.",
+        isAuthenticated: true,
+        isHydrated: true,
+        user: {
+          name: session.name ?? null,
+          email: session.email ?? null,
+          image: session.image ?? null,
+        },
       });
-      return false;
     }
-
-    const user = { username: username.trim() };
-
-    // Persist session if "remember me" is checked
-    if (rememberMe) {
-      try {
-        localStorage.setItem("infinity-auth", JSON.stringify(user));
-      } catch {}
-    } else {
-      try {
-        localStorage.removeItem("infinity-auth");
-      } catch {}
-    }
-
-    set({
-      isAuthenticated: true,
-      user,
-      loginLoading: false,
-      loginError: null,
-    });
-    return true;
   },
 
-  logout: () => {
+  login: async (_username, _password, rememberMe) => {
+    // Google OAuth — redirect to Google sign-in
+    set({ loginLoading: true, loginError: null });
+    try {
+      await nextAuthSignIn("google", {
+        callbackUrl: "/",
+        redirect: true,
+      });
+      // The page will redirect so we won't reach here, but mark as not loading
+      // in case the redirect doesn't happen immediately
+    } catch {
+      set({
+        loginLoading: false,
+        loginError: "Failed to start Google sign-in. Please try again.",
+      });
+    }
+    return false;
+  },
+
+  logout: async () => {
     try {
       localStorage.removeItem("infinity-auth");
     } catch {}
+    // Sign out from next-auth and redirect to home
+    await nextAuthSignOut({ callbackUrl: "/", redirect: true });
     set({
       isAuthenticated: false,
       user: null,
