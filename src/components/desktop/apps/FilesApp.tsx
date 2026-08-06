@@ -105,6 +105,15 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const [uploadProgress, setUploadProgress] = useState<{ label: string; pct: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Drag-and-drop state ──────────────────────────────────────────────────
+
+  const [dragEntryId, setDragEntryId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+
+  const dragEntry = dragEntryId
+    ? stack.flatMap((s) => s.entries).find((e) => e.id === dragEntryId) ?? null
+    : null;
+
   // Load root folder
   useEffect(() => {
     loadFolder(null);
@@ -229,6 +238,68 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     }
   }
 
+  /** Move an entry into a target folder via drag-and-drop. */
+  async function handleMove(entryId: string, targetFolderId: string | null) {
+    // No-op: moving into the folder it's already in
+    const entry = stack.flatMap((s) => s.entries).find((e) => e.id === entryId);
+    if (!entry) return;
+
+    // Find which folder the entry is currently in
+    const currentFolderId = stack.length > 0 ? stack[stack.length - 1].folderId : null;
+    if (targetFolderId === currentFolderId) return;
+    // Don't move a folder into itself
+    if (entry.kind === "folder" && targetFolderId === entry.id) return;
+
+    try {
+      await FileSDKClient.move(entryId, targetFolderId);
+      // Reload whichever column we're showing
+      const idToReload = stack.length > 0 ? stack[stack.length - 1].folderId : null;
+      await loadFolder(idToReload);
+    } catch (err: any) {
+      setError(err.message ?? "Move failed");
+    }
+  }
+
+  // ── Drag-and-drop handlers ──────────────────────────────────────────────
+
+  function onDragStart(entryId: string) {
+    setDragEntryId(entryId);
+  }
+
+  function onDragOverFolder(e: React.DragEvent, folderId: string) {
+    // Only accept drops onto folders that aren't the dragged item itself
+    if (dragEntryId === folderId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverFolderId(folderId);
+  }
+
+  function onDragOverRoot(e: React.DragEvent) {
+    // Dropping onto the column background means moving into that column's folder
+    const colFolderId = stack.length > 0 ? stack[stack.length - 1].folderId : null;
+    if (dragEntryId && colFolderId === dragEntryId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverFolderId(null); // root column = no specific folder highlighted
+  }
+
+  function onDragLeaveFolder() {
+    setDragOverFolderId(null);
+  }
+
+  async function onDrop(e: React.DragEvent, targetFolderId: string | null) {
+    e.preventDefault();
+    const entryId = dragEntryId;
+    setDragEntryId(null);
+    setDragOverFolderId(null);
+    if (entryId) await handleMove(entryId, targetFolderId);
+  }
+
+  function onDragEnd() {
+    setDragEntryId(null);
+    setDragOverFolderId(null);
+  }
+
   async function handleCreateFolder() {
     const name = await showModal(
       "New folder",
@@ -339,17 +410,48 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           )}
           {!loading && entries.map((entry, fi) => {
             const Icon = fileIcon(entry);
+            const isDropTarget = dragOverFolderId === entry.id;
+            const isDragging = dragEntryId === entry.id;
             return (
               <button key={entry.id}
+                draggable
+                onDragStart={() => onDragStart(entry.id)}
+                onDragEnd={onDragEnd}
+                onDragOver={
+                  entry.kind === "folder"
+                    ? (e) => onDragOverFolder(e, entry.id)
+                    : undefined
+                }
+                onDragLeave={entry.kind === "folder" ? onDragLeaveFolder : undefined}
+                onDrop={
+                  entry.kind === "folder"
+                    ? (e) => onDrop(e, entry.id)
+                    : undefined
+                }
                 className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-left transition-colors outline-none"
-                style={{ borderBottom: "1px solid rgba(0,0,0,0.03)", color: "#3d3a4d" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.03)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                style={{
+                  borderBottom: "1px solid rgba(0,0,0,0.03)",
+                  color: "#3d3a4d",
+                  background: isDropTarget ? "rgba(124,111,212,0.25)" : "transparent",
+                  opacity: isDragging ? 0.4 : 1,
+                  outline: isDropTarget ? "2px solid rgba(124,111,212,0.5)" : "none",
+                  outlineOffset: -2,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isDropTarget) e.currentTarget.style.background = "rgba(0,0,0,0.03)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isDropTarget) e.currentTarget.style.background = "transparent";
+                }}
                 onClick={() => { selectColumn(stack.length - 1, fi); navigateInto(fi, entry); }}
               >
                 <span className="opacity-55"><Icon className="w-5 h-5 shrink-0" /></span>
                 <span className="truncate flex-1">{entry.name}</span>
-                {entry.kind === "folder" && <span className="text-[11px] opacity-30 shrink-0">›</span>}
+                {entry.kind === "folder" && (
+                  <span className="text-[11px] opacity-30 shrink-0">
+                    {isDropTarget ? "⬇" : "›"}
+                  </span>
+                )}
                 {entry.size != null && entry.kind !== "folder" && (
                   <span className="text-[11px] shrink-0" style={{ color: "#9b96a8" }}>{formatSize(entry.size)}</span>
                 )}
@@ -465,18 +567,53 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
             <Spinner /><span className="ml-2 text-[14px]">Loading files…</span>
           </div>
         )}
-        {!loading && cols.map((col, ci) => (
+        {!loading && cols.map((col, ci) => {
+          const colFolderId = ci < stack.length ? stack[ci].folderId : null;
+          return (
           <div key={ci} className="h-full overflow-y-auto shrink-0"
-            style={{ width: 220, borderRight: ci < totalCols - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
+            style={{ width: 220, borderRight: ci < totalCols - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+            onDrop={(e) => onDrop(e, colFolderId)}
+          >
             {col.map((entry, fi) => {
               const Icon = fileIcon(entry);
               const isSel = selInCol(ci) === fi;
+              const isDropTarget = dragOverFolderId === entry.id;
+              const isDragging = dragEntryId === entry.id;
+
               return (
                 <button key={entry.id}
+                  draggable
+                  onDragStart={() => onDragStart(entry.id)}
+                  onDragEnd={onDragEnd}
+                  onDragOver={
+                    entry.kind === "folder"
+                      ? (e) => onDragOverFolder(e, entry.id)
+                      : undefined
+                  }
+                  onDragLeave={entry.kind === "folder" ? onDragLeaveFolder : undefined}
+                  onDrop={
+                    entry.kind === "folder"
+                      ? (e) => onDrop(e, entry.id)
+                      : undefined
+                  }
                   className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors outline-none group"
-                  style={{ background: isSel ? "rgba(124,111,212,0.20)" : "transparent", color: isSel ? "#1d1a28" : "#3d3a4d" }}
-                  onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
-                  onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = "transparent"; }}
+                  style={{
+                    background: isDropTarget
+                      ? "rgba(124,111,212,0.25)"
+                      : isSel ? "rgba(124,111,212,0.20)" : "transparent",
+                    color: isSel ? "#1d1a28" : "#3d3a4d",
+                    opacity: isDragging ? 0.4 : 1,
+                    outline: isDropTarget ? "2px solid rgba(124,111,212,0.5)" : "none",
+                    outlineOffset: -2,
+                    borderRadius: isDropTarget ? 4 : 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSel && !isDropTarget) e.currentTarget.style.background = "rgba(0,0,0,0.03)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSel && !isDropTarget) e.currentTarget.style.background = "transparent";
+                  }}
                   onClick={() => { selectColumn(ci, fi); navigateInto(fi, entry); }}
                   onContextMenu={(e) => {
                     e.preventDefault();
@@ -487,7 +624,11 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                 >
                   <span className="opacity-55"><Icon className="w-4 h-4 shrink-0" /></span>
                   <span className="truncate">{entry.name}</span>
-                  {entry.kind === "folder" && <span className="ml-auto text-[10px] opacity-35 shrink-0">›</span>}
+                  {entry.kind === "folder" && (
+                    <span className="ml-auto text-[10px] opacity-35 shrink-0">
+                      {isDropTarget ? "⬇" : "›"}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -497,7 +638,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
               </div>
             )}
           </div>
-        ))}
+        )})}
         {!loading && hasPreview && <PreviewColumn entry={previewEntry!} />}
       </div>
     </div>
