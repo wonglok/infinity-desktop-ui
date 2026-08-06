@@ -116,15 +116,15 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
 
   // Load root folder
   useEffect(() => {
-    loadFolder(null);
+    loadRoot();
   }, []);
 
-  async function loadFolder(folderId: string | null) {
+  async function loadRoot() {
     setLoading(true);
     setError(null);
     try {
-      const entries = await FileSDKClient.list(folderId);
-      setStack([{ folderId, entries, selectedIdx: -1 }]);
+      const entries = await FileSDKClient.list(null);
+      setStack([{ folderId: null, entries, selectedIdx: -1 }]);
       setPreviewEntry(null);
     } catch (err: any) {
       setError(err.message ?? "Failed to load files");
@@ -134,20 +134,40 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     }
   }
 
-  async function navigateInto(idx: number, entry: FileEntry) {
-    // Update selection in current column
-    setStack((prev) => {
-      const updated = [...prev];
-      updated[updated.length - 1] = { ...updated[updated.length - 1], selectedIdx: idx };
-      return updated;
-    });
+  /** Reload just the deepest column — preserves the folder path after mutations. */
+  async function reloadCurrent() {
+    setError(null);
+    try {
+      const currentFolderId = stack.length > 0 ? stack[stack.length - 1].folderId : null;
+      const entries = await FileSDKClient.list(currentFolderId);
+      setStack((prev) => {
+        if (prev.length === 0) return prev;
+        const updated = [...prev];
+        updated[updated.length - 1] = { ...updated[updated.length - 1], entries };
+        return updated;
+      });
+    } catch (err: any) {
+      setError(err.message ?? "Failed to reload folder");
+    } finally {
+      setLoading(false);
+    }
+  }
 
+  async function navigateInto(colIdx: number, idx: number, entry: FileEntry) {
     if (entry.kind === "folder") {
       setLoading(true);
       setError(null);
       try {
         const entries = await FileSDKClient.list(entry.id);
-        setStack((prev) => [...prev, { folderId: entry.id, entries, selectedIdx: -1 }]);
+        // Truncate stack at colIdx + 1, then push the new folder column
+        setStack((prev) => {
+          const base = prev.slice(0, colIdx + 1);
+          // Mark the clicked entry as selected in its column
+          if (base.length > 0) {
+            base[base.length - 1] = { ...base[base.length - 1], selectedIdx: idx };
+          }
+          return [...base, { folderId: entry.id, entries, selectedIdx: -1 }];
+        });
         setPreviewEntry(null);
       } catch (err: any) {
         setError(err.message ?? "Failed to open folder");
@@ -155,6 +175,14 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
         setLoading(false);
       }
     } else {
+      // File — update selection and show preview
+      setStack((prev) => {
+        const updated = [...prev];
+        if (colIdx < updated.length) {
+          updated[colIdx] = { ...updated[colIdx], selectedIdx: idx };
+        }
+        return updated;
+      });
       setPreviewEntry(entry);
     }
   }
@@ -217,8 +245,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       // Step 3 — confirm the upload so the DB record gets the real size
       await FileSDKClient.confirmUpload(entry.id, file.size);
 
-      // Reload current folder
-      await loadFolder(currentFolder);
+      await reloadCurrent();
     } catch (err: any) {
       setError(err.message ?? "Upload failed");
     } finally {
@@ -230,9 +257,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   async function handleDelete(entryId: string) {
     try {
       await FileSDKClient.delete(entryId);
-      const currentFolder = stack.length > 0 ? stack[stack.length - 1].folderId : null;
-      await loadFolder(currentFolder);
       setPreviewEntry(null);
+      await reloadCurrent();
     } catch (err: any) {
       setError(err.message ?? "Delete failed");
     }
@@ -240,21 +266,29 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
 
   /** Move an entry into a target folder via drag-and-drop. */
   async function handleMove(entryId: string, targetFolderId: string | null) {
-    // No-op: moving into the folder it's already in
     const entry = stack.flatMap((s) => s.entries).find((e) => e.id === entryId);
     if (!entry) return;
 
-    // Find which folder the entry is currently in
-    const currentFolderId = stack.length > 0 ? stack[stack.length - 1].folderId : null;
-    if (targetFolderId === currentFolderId) return;
-    // Don't move a folder into itself
-    if (entry.kind === "folder" && targetFolderId === entry.id) return;
+    // No-op: moving into the folder it's already in — find the entry's current parent
+    if (targetFolderId === entry.id) return; // can't drop folder into itself
 
     try {
       await FileSDKClient.move(entryId, targetFolderId);
-      // Reload whichever column we're showing
-      const idToReload = stack.length > 0 ? stack[stack.length - 1].folderId : null;
-      await loadFolder(idToReload);
+
+      // Reload every visible column so all views reflect the change
+      setLoading(true);
+      try {
+        const refreshed: { folderId: string | null; entries: FileEntry[]; selectedIdx: number }[] = [];
+        for (const col of stack) {
+          const entries = await FileSDKClient.list(col.folderId);
+          refreshed.push({ folderId: col.folderId, entries, selectedIdx: col.selectedIdx });
+        }
+        setStack(refreshed);
+      } catch {
+        // fallback: reload just the current column
+        await reloadCurrent();
+      }
+      setLoading(false);
     } catch (err: any) {
       setError(err.message ?? "Move failed");
     }
@@ -267,32 +301,33 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   }
 
   function onDragOverFolder(e: React.DragEvent, folderId: string) {
-    // Only accept drops onto folders that aren't the dragged item itself
     if (dragEntryId === folderId) return;
     e.preventDefault();
+    e.stopPropagation(); // prevent column div from capturing
     e.dataTransfer.dropEffect = "move";
     setDragOverFolderId(folderId);
   }
 
-  function onDragOverRoot(e: React.DragEvent) {
-    // Dropping onto the column background means moving into that column's folder
-    const colFolderId = stack.length > 0 ? stack[stack.length - 1].folderId : null;
-    if (dragEntryId && colFolderId === dragEntryId) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverFolderId(null); // root column = no specific folder highlighted
-  }
-
-  function onDragLeaveFolder() {
+  function onDragLeaveFolder(e: React.DragEvent) {
+    e.stopPropagation();
     setDragOverFolderId(null);
   }
 
-  async function onDrop(e: React.DragEvent, targetFolderId: string | null) {
+  function onFolderDrop(e: React.DragEvent, targetFolderId: string) {
+    e.preventDefault();
+    e.stopPropagation(); // prevent column div's onDrop from also firing
+    const entryId = dragEntryId;
+    setDragEntryId(null);
+    setDragOverFolderId(null);
+    if (entryId) handleMove(entryId, targetFolderId);
+  }
+
+  function onColumnDrop(e: React.DragEvent, colFolderId: string | null) {
     e.preventDefault();
     const entryId = dragEntryId;
     setDragEntryId(null);
     setDragOverFolderId(null);
-    if (entryId) await handleMove(entryId, targetFolderId);
+    if (entryId) handleMove(entryId, colFolderId);
   }
 
   function onDragEnd() {
@@ -314,7 +349,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     try {
       const currentFolderId = stack.length > 0 ? stack[stack.length - 1].folderId : null;
       await FileSDKClient.createFolder(name.trim(), currentFolderId);
-      await loadFolder(currentFolderId);
+      await reloadCurrent();
     } catch (err: any) {
       setError(err.message ?? "Failed to create folder");
     }
@@ -403,7 +438,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
             <div className="mx-3 mt-3 rounded-[10px] px-3 py-2 text-[12px]"
               style={{ background: "rgba(239,68,68,0.06)", color: "#c41e1e" }}>
               {error}
-              <button className="ml-2 underline" onClick={() => { const id = currentFolder?.folderId ?? null; loadFolder(id); }}>
+              <button className="ml-2 underline" onClick={reloadCurrent}>
                 Retry
               </button>
             </div>
@@ -425,7 +460,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                 onDragLeave={entry.kind === "folder" ? onDragLeaveFolder : undefined}
                 onDrop={
                   entry.kind === "folder"
-                    ? (e) => onDrop(e, entry.id)
+                    ? (e) => onFolderDrop(e, entry.id)
                     : undefined
                 }
                 className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-left transition-colors outline-none"
@@ -443,7 +478,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                 onMouseLeave={(e) => {
                   if (!isDropTarget) e.currentTarget.style.background = "transparent";
                 }}
-                onClick={() => { selectColumn(stack.length - 1, fi); navigateInto(fi, entry); }}
+                onClick={() => { selectColumn(stack.length - 1, fi); navigateInto(stack.length - 1, fi, entry); }}
               >
                 <span className="opacity-55"><Icon className="w-5 h-5 shrink-0" /></span>
                 <span className="truncate flex-1">{entry.name}</span>
@@ -554,7 +589,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
         <div className="mx-4 mt-2 rounded-[10px] px-3 py-1.5 text-[12px] flex items-center gap-2"
           style={{ background: "rgba(239,68,68,0.06)", color: "#c41e1e" }}>
           <span className="flex-1">{error}</span>
-          <button className="underline shrink-0" onClick={() => { const id = currentFolder?.folderId ?? null; loadFolder(id); }}>
+          <button className="underline shrink-0" onClick={reloadCurrent}>
             Retry
           </button>
         </div>
@@ -573,7 +608,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           <div key={ci} className="h-full overflow-y-auto shrink-0"
             style={{ width: 220, borderRight: ci < totalCols - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}
             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
-            onDrop={(e) => onDrop(e, colFolderId)}
+            onDrop={(e) => onColumnDrop(e, colFolderId)}
           >
             {col.map((entry, fi) => {
               const Icon = fileIcon(entry);
@@ -594,7 +629,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                   onDragLeave={entry.kind === "folder" ? onDragLeaveFolder : undefined}
                   onDrop={
                     entry.kind === "folder"
-                      ? (e) => onDrop(e, entry.id)
+                      ? (e) => onFolderDrop(e, entry.id)
                       : undefined
                   }
                   className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors outline-none group"
@@ -614,7 +649,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                   onMouseLeave={(e) => {
                     if (!isSel && !isDropTarget) e.currentTarget.style.background = "transparent";
                   }}
-                  onClick={() => { selectColumn(ci, fi); navigateInto(fi, entry); }}
+                  onClick={() => { selectColumn(ci, fi); navigateInto(ci, fi, entry); }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     if (confirm(`Delete "${entry.name}"?`)) {

@@ -121,10 +121,22 @@ export class FileSDK {
     return map.get("__root__") ?? [];
   }
 
+  // ── Validation ────────────────────────────────────────────────────────
+
+  /** Ensure a target folder exists and belongs to the current user. */
+  private async validateFolderOwnership(folderId: string | null): Promise<void> {
+    if (!folderId) return;
+    const folder = await FileModel.findById(folderId);
+    if (!folder || folder.userId !== this.userId || !folder.isFolder) {
+      throw new Error("Folder not found or access denied");
+    }
+  }
+
   // ── Create folder ─────────────────────────────────────────────────────
 
   async createFolder(name: string, folderId: string | null = null): Promise<FileEntry> {
     await dbConnect();
+    await this.validateFolderOwnership(folderId);
 
     const folderKey = `folders/${this.userId}/${Date.now()}-${name}`;
 
@@ -147,6 +159,7 @@ export class FileSDK {
   /** Upload a file (buffer) and create the DB record. */
   async upload(input: CreateFileInput): Promise<FileEntry> {
     await dbConnect();
+    if (input.folderId) await this.validateFolderOwnership(input.folderId);
 
     const s3Key = makeS3Key(
       this.userId,
@@ -184,6 +197,7 @@ export class FileSDK {
     uploadUrl: string;
   }> {
     await dbConnect();
+    if (input.folderId) await this.validateFolderOwnership(input.folderId);
 
     const s3Key = makeS3Key(
       this.userId,
@@ -280,6 +294,7 @@ export class FileSDK {
 
   async move(id: string, targetFolderId: string | null): Promise<FileEntry | null> {
     await dbConnect();
+    await this.validateFolderOwnership(targetFolderId);
 
     const doc = await FileModel.findById(id);
     if (!doc || doc.userId !== this.userId) return null;
