@@ -1,90 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { type WindowInstance, useDesktopStore } from "../store";
+import { FileSDKClient, type FileEntry } from "../../../../desktop-ui-app/sdk/fileSDKClient";
 import {
   DocumentIcon, ImageIcon, MusicIcon, VideoIcon,
   DownloadIcon, ArrowLeftIcon, ArrowRightIcon,
+  FolderIcon,
 } from "../icons";
-
-// ── Types & data ────────────────────────────────────────────────────────────
-
-export interface FSEntry {
-  name: string;
-  kind: "folder" | "file";
-  children?: FSEntry[];
-  size?: string;
-  ext?: string;
-}
-
-export const mockFS: FSEntry[] = [
-  { name: "Desktop", kind: "folder", children: [] },
-  {
-    name: "Documents", kind: "folder",
-    children: [
-      {
-        name: "Work", kind: "folder",
-        children: [
-          { name: "project-notes.txt", kind: "file", size: "18 KB", ext: "txt" },
-          { name: "Q4-budget.xlsx", kind: "file", size: "245 KB", ext: "xlsx" },
-          { name: "presentation.key", kind: "file", size: "8.2 MB", ext: "key" },
-        ],
-      },
-      {
-        name: "Personal", kind: "folder",
-        children: [
-          { name: "recipes.pdf", kind: "file", size: "1.4 MB", ext: "pdf" },
-          { name: "travel-plans.txt", kind: "file", size: "3 KB", ext: "txt" },
-        ],
-      },
-      { name: "draft.md", kind: "file", size: "12 KB", ext: "md" },
-      { name: "resume.pdf", kind: "file", size: "86 KB", ext: "pdf" },
-    ],
-  },
-  {
-    name: "Pictures", kind: "folder",
-    children: [
-      { name: "profile.png", kind: "file", size: "420 KB", ext: "png" },
-      {
-        name: "Vacation", kind: "folder",
-        children: [
-          { name: "beach.jpg", kind: "file", size: "3.2 MB", ext: "jpg" },
-          { name: "sunset.png", kind: "file", size: "1.8 MB", ext: "png" },
-          { name: "hotel.jpg", kind: "file", size: "2.1 MB", ext: "jpg" },
-        ],
-      },
-      { name: "wallpaper.png", kind: "file", size: "5.1 MB", ext: "png" },
-    ],
-  },
-  {
-    name: "Music", kind: "folder",
-    children: [
-      { name: "playlist.m3u", kind: "file", size: "2 KB", ext: "m3u" },
-      { name: "favorite.mp3", kind: "file", size: "6.4 MB", ext: "mp3" },
-      { name: "podcast.mp3", kind: "file", size: "42 MB", ext: "mp3" },
-    ],
-  },
-  {
-    name: "Videos", kind: "folder",
-    children: [
-      { name: "screen-record.mp4", kind: "file", size: "156 MB", ext: "mp4" },
-      { name: "tutorial.mp4", kind: "file", size: "890 MB", ext: "mp4" },
-    ],
-  },
-  {
-    name: "Downloads", kind: "folder",
-    children: [
-      { name: "installer.dmg", kind: "file", size: "124 MB", ext: "dmg" },
-      { name: "invoice.pdf", kind: "file", size: "64 KB", ext: "pdf" },
-      { name: "archive.zip", kind: "file", size: "3.8 MB", ext: "zip" },
-    ],
-  },
-];
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function fileIcon(entry: FSEntry) {
-  if (entry.kind === "folder") return FolderIconSvg;
+function fileIcon(entry: FileEntry) {
+  if (entry.kind === "folder") return FolderIcon;
   const e = entry.ext ?? "";
   if (["jpg", "png", "gif", "webp", "svg"].includes(e)) return ImageIcon;
   if (["mp3", "m4a", "flac", "wav", "m3u"].includes(e)) return MusicIcon;
@@ -93,18 +21,27 @@ function fileIcon(entry: FSEntry) {
   return DocumentIcon;
 }
 
-function FolderIconSvg() {
+function formatSize(bytes: number): string {
+  if (!bytes || bytes < 1024) return bytes ? `${bytes} B` : "—";
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+// ── Spinner ─────────────────────────────────────────────────────────────────
+
+function Spinner() {
   return (
-    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 7.5C3 6.672 3.672 6 4.5 6h4.8c.398 0 .78.158 1.06.44L11.5 7.5H19.5c.828 0 1.5.672 1.5 1.5V19.5c0 .828-.672 1.5-1.5 1.5H4.5C3.672 21 3 20.328 3 19.5V7.5Z" />
+    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <circle className="opacity-25" cx="12" cy="12" r="10" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   );
 }
 
 // ── Preview column ──────────────────────────────────────────────────────────
 
-function PreviewColumn({ entry }: { entry: FSEntry }) {
+function PreviewColumn({ entry }: { entry: FileEntry }) {
   const Icon = fileIcon(entry);
   return (
     <div className="h-full overflow-y-auto shrink-0 flex flex-col" style={{ width: 240 }}>
@@ -113,33 +50,42 @@ function PreviewColumn({ entry }: { entry: FSEntry }) {
       </div>
       <div className="px-6 pb-6 text-center">
         <div className="text-[15px] font-medium" style={{ color: "#1d1a28" }}>{entry.name}</div>
-        <div className="text-[12px] mt-1" style={{ color: "#6b6680" }}>{entry.size ?? "—"}</div>
+        <div className="text-[12px] mt-1" style={{ color: "#6b6680" }}>
+          {entry.size != null ? formatSize(entry.size) : "—"}
+        </div>
       </div>
       <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
         {[
-          ["Kind", entry.ext ? `${entry.ext.toUpperCase()} document` : "Document"],
-          ["Size", entry.size ?? "—"],
-          ["Modified", "Today at " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })],
-          ["Created", "Today"],
+          ["Kind", entry.kind === "folder" ? "Folder" : entry.mimeType ?? "Document"],
+          ["Size", entry.size != null ? formatSize(entry.size) : "—"],
+          ["Modified", entry.updatedAt
+            ? new Date(entry.updatedAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+            : "—"],
         ].map(([label, value]) => (
           <div key={label} className="flex px-5 py-2.5 text-[12px]"
             style={{ borderBottom: "1px solid rgba(0,0,0,0.03)" }}>
             <span className="w-20 shrink-0" style={{ color: "#9b96a8" }}>{label}</span>
-            <span style={{ color: "#3d3a4d" }}>{value}</span>
+            <span className="truncate" style={{ color: "#3d3a4d" }}>{value}</span>
           </div>
         ))}
       </div>
-      <div className="px-5 pt-4 space-y-1">
-        <div className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#9b96a8" }}>Open with</div>
-        {["Preview", "TextEdit", "Browser"].map((app) => (
-          <button key={app}
-            className="flex items-center gap-2 w-full px-3 py-1.5 rounded-[8px] text-[13px] text-left transition-colors"
-            style={{ color: "#3d3a4d" }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+      {/* Download link for files */}
+      {entry.kind === "file" && (
+        <div className="px-5 pt-4">
+          <a
+            href={FileSDKClient.getDownloadUrl(entry.id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 w-full px-3 py-1.5 rounded-[8px] text-[13px] transition-colors"
+            style={{ color: "#7c6fd4" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,111,212,0.08)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >{app}</button>
-        ))}
-      </div>
+          >
+            <DownloadIcon className="w-3.5 h-3.5" />
+            Download
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -148,45 +94,177 @@ function PreviewColumn({ entry }: { entry: FSEntry }) {
 
 export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const isMobile = useDesktopStore((s) => s.isMobile);
-  const [columns, setColumns] = useState<FSEntry[][]>([mockFS]);
-  const [selected, setSelected] = useState<number[]>([]);
-  const [previewEntry, setPreviewEntry] = useState<FSEntry | null>(null);
+  const showModal = useDesktopStore((s) => s.showModal);
 
-  function navigate(colIdx: number, entry: FSEntry) {
-    const nextSelected = [...selected.slice(0, colIdx), -1];
-    nextSelected[colIdx] = columns[colIdx].indexOf(entry);
-    if (entry.kind === "folder") {
-      setColumns([...columns.slice(0, colIdx + 1), entry.children ?? []]);
+  // Folder stack: each layer is { folderId, entries } — index 0 is root
+  const [stack, setStack] = useState<{ folderId: string | null; entries: FileEntry[]; selectedIdx: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [previewEntry, setPreviewEntry] = useState<FileEntry | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ label: string; pct: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load root folder
+  useEffect(() => {
+    loadFolder(null);
+  }, []);
+
+  async function loadFolder(folderId: string | null) {
+    setLoading(true);
+    setError(null);
+    try {
+      const entries = await FileSDKClient.list(folderId);
+      setStack([{ folderId, entries, selectedIdx: -1 }]);
       setPreviewEntry(null);
+    } catch (err: any) {
+      setError(err.message ?? "Failed to load files");
+      setStack([{ folderId: null, entries: [], selectedIdx: -1 }]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function navigateInto(idx: number, entry: FileEntry) {
+    // Update selection in current column
+    setStack((prev) => {
+      const updated = [...prev];
+      updated[updated.length - 1] = { ...updated[updated.length - 1], selectedIdx: idx };
+      return updated;
+    });
+
+    if (entry.kind === "folder") {
+      setLoading(true);
+      setError(null);
+      try {
+        const entries = await FileSDKClient.list(entry.id);
+        setStack((prev) => [...prev, { folderId: entry.id, entries, selectedIdx: -1 }]);
+        setPreviewEntry(null);
+      } catch (err: any) {
+        setError(err.message ?? "Failed to open folder");
+      } finally {
+        setLoading(false);
+      }
     } else {
-      setColumns(columns.slice(0, colIdx + 1));
       setPreviewEntry(entry);
     }
-    setSelected(nextSelected);
   }
 
   function selectColumn(colIdx: number, idx: number) {
-    const next = [...selected.slice(0, colIdx), idx];
-    while (next.length < columns.length) next.push(-1);
-    setSelected(next);
+    setStack((prev) => {
+      const updated = [...prev];
+      if (colIdx < updated.length) {
+        updated[colIdx] = { ...updated[colIdx], selectedIdx: idx };
+      }
+      return updated;
+    });
   }
-
-  const hasPreview = previewEntry !== null;
-  const canGoBack = columns.length > 1 || hasPreview;
 
   function goBack() {
-    if (hasPreview) { setPreviewEntry(null); return; }
-    if (columns.length <= 1) return;
-    setColumns(columns.slice(0, -1));
-    setSelected(selected.slice(0, -1));
+    if (previewEntry) {
+      setPreviewEntry(null);
+      return;
+    }
+    if (stack.length <= 1) return;
+    setStack((prev) => prev.slice(0, -1));
+    setPreviewEntry(null);
   }
 
-  const selInCol = (ci: number) => selected[ci] ?? -1;
-  const totalCols = columns.length + (hasPreview ? 1 : 0);
+  async function handleUpload(file: File) {
+    setUploading(true);
+    setUploadProgress({ label: file.name, pct: 0 });
+    setError(null);
 
-  // Mobile: single-column drill-down
+    try {
+      const currentFolder = stack.length > 0 ? stack[stack.length - 1].folderId : null;
+
+      // Step 1 — get a pre-signed S3 URL
+      const { entry, uploadUrl } = await FileSDKClient.signUpload(
+        file.name,
+        file.type || "application/octet-stream",
+        currentFolder,
+      );
+
+      // Step 2 — upload directly to S3 (bypasses Next.js server)
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            setUploadProgress({ label: file.name, pct: Math.round((ev.loaded / ev.total) * 100) });
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`S3 upload failed (${xhr.status})`));
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.send(file);
+      });
+
+      // Step 3 — confirm the upload so the DB record gets the real size
+      await FileSDKClient.confirmUpload(entry.id, file.size);
+
+      // Reload current folder
+      await loadFolder(currentFolder);
+    } catch (err: any) {
+      setError(err.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
+    }
+  }
+
+  async function handleDelete(entryId: string) {
+    try {
+      await FileSDKClient.delete(entryId);
+      const currentFolder = stack.length > 0 ? stack[stack.length - 1].folderId : null;
+      await loadFolder(currentFolder);
+      setPreviewEntry(null);
+    } catch (err: any) {
+      setError(err.message ?? "Delete failed");
+    }
+  }
+
+  async function handleCreateFolder() {
+    const name = await showModal(
+      "New folder",
+      "Enter a name for the new folder.",
+      "prompt",
+      { placeholder: "Folder name", defaultValue: "Untitled folder" },
+    );
+
+    // User cancelled
+    if (!name || typeof name !== "string" || !name.trim()) return;
+
+    try {
+      const currentFolderId = stack.length > 0 ? stack[stack.length - 1].folderId : null;
+      await FileSDKClient.createFolder(name.trim(), currentFolderId);
+      await loadFolder(currentFolderId);
+    } catch (err: any) {
+      setError(err.message ?? "Failed to create folder");
+    }
+  }
+
+  const onFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) handleUpload(f);
+    // Reset so the same file can be re-uploaded
+    e.target.value = "";
+  }, [stack]);
+
+  const currentFolder = stack.length > 0 ? stack[stack.length - 1] : null;
+  const hasPreview = previewEntry !== null;
+  const canGoBack = stack.length > 1 || hasPreview;
+  const selInCol = (ci: number) => (ci < stack.length ? stack[ci].selectedIdx : -1);
+
+  // ── Mobile ────────────────────────────────────────────────────────────────
+
   if (isMobile) {
-    const currentCol = columns[columns.length - 1];
+    const entries = currentFolder?.entries ?? [];
     return (
       <div className="flex h-full flex-col">
         {/* Toolbar */}
@@ -194,42 +272,105 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           style={{ background: "rgba(0,0,0,0.018)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
           <button onClick={goBack} disabled={!canGoBack}
             className="flex items-center justify-center w-8 h-8 rounded-[10px] transition-colors touch-target"
-            style={{ color: canGoBack ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.15)", cursor: canGoBack ? "pointer" : "default" }}
+            style={{ color: canGoBack ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.15)" }}
           ><ArrowLeftIcon className="w-4 h-4" /></button>
           <span className="flex-1 text-[13px] font-medium truncate" style={{ color: "#1d1a28" }}>
-            {columns.length > 1 ? columns[columns.length - 2][selInCol(columns.length - 2)]?.name ?? "Files" : "Files"}
+            {stack.length > 1 ? stack[stack.length - 2].entries[selInCol(stack.length - 2)]?.name ?? "Files" : "Files"}
           </span>
-          <span className="text-[11px]" style={{ color: "#9b96a8" }}>{currentCol.length} items</span>
+          <span className="text-[11px]" style={{ color: "#9b96a8" }}>
+            {entries.length} items{uploading ? " · uploading…" : ""}
+          </span>
+        </div>
+
+        {/* Actions: upload + new folder */}
+        <div className="px-3 py-2 flex gap-2" style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex-1 rounded-[10px] py-2 text-[12px] font-medium transition-colors touch-target"
+            style={{
+              background: "rgba(124,111,212,0.08)",
+              color: "#7c6fd4",
+              opacity: uploading ? 0.5 : 1,
+            }}
+          >
+            {uploading ? (
+              <span className="flex items-center justify-center gap-2">
+                {uploadProgress ? `${uploadProgress.pct}%` : <Spinner />}
+                {uploadProgress ? uploadProgress.label : "Uploading…"}
+              </span>
+            ) : (
+              "Upload file"
+            )}
+          </button>
+          <button
+            onClick={handleCreateFolder}
+            className="flex items-center justify-center gap-1 rounded-[10px] py-2 px-3 text-[12px] font-medium transition-colors touch-target shrink-0"
+            style={{
+              background: "rgba(0,0,0,0.04)",
+              color: "#4a4658",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            New folder
+          </button>
+          <input ref={fileInputRef} type="file" className="hidden" onChange={onFileInput} />
         </div>
 
         {/* Single column */}
         <div className="flex-1 overflow-y-auto">
-          {currentCol.map((entry, fi) => {
+          {loading && (
+            <div className="flex items-center justify-center py-12" style={{ color: "#9b96a8" }}>
+              <Spinner /><span className="ml-2 text-[13px]">Loading…</span>
+            </div>
+          )}
+          {error && (
+            <div className="mx-3 mt-3 rounded-[10px] px-3 py-2 text-[12px]"
+              style={{ background: "rgba(239,68,68,0.06)", color: "#c41e1e" }}>
+              {error}
+              <button className="ml-2 underline" onClick={() => { const id = currentFolder?.folderId ?? null; loadFolder(id); }}>
+                Retry
+              </button>
+            </div>
+          )}
+          {!loading && entries.map((entry, fi) => {
             const Icon = fileIcon(entry);
             return (
-              <button key={fi}
+              <button key={entry.id}
                 className="flex items-center gap-3 w-full px-4 py-3 text-[14px] text-left transition-colors outline-none"
                 style={{ borderBottom: "1px solid rgba(0,0,0,0.03)", color: "#3d3a4d" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.03)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                onClick={() => { selectColumn(columns.length - 1, fi); navigate(columns.length - 1, entry); }}
+                onClick={() => { selectColumn(stack.length - 1, fi); navigateInto(fi, entry); }}
               >
                 <span className="opacity-55"><Icon className="w-5 h-5 shrink-0" /></span>
                 <span className="truncate flex-1">{entry.name}</span>
                 {entry.kind === "folder" && <span className="text-[11px] opacity-30 shrink-0">›</span>}
-                {entry.size && <span className="text-[11px] shrink-0" style={{ color: "#9b96a8" }}>{entry.size}</span>}
+                {entry.size != null && entry.kind !== "folder" && (
+                  <span className="text-[11px] shrink-0" style={{ color: "#9b96a8" }}>{formatSize(entry.size)}</span>
+                )}
               </button>
             );
           })}
-          {currentCol.length === 0 && (
-            <div className="px-4 py-12 text-center text-[14px]" style={{ color: "#9b96a8" }}>Empty folder</div>
+          {!loading && entries.length === 0 && !error && (
+            <div className="px-4 py-12 text-center text-[14px]" style={{ color: "#9b96a8" }}>
+              {stack.length === 1 ? "No files yet. Upload something!" : "Empty folder"}
+            </div>
           )}
         </div>
       </div>
     );
   }
 
-  // Desktop: multi-column browser
+  // ── Desktop ────────────────────────────────────────────────────────────────
+
+  const cols = stack.map((s) => s.entries);
+  const totalCols = cols.length + (hasPreview ? 1 : 0);
+
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
@@ -244,16 +385,52 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
         <button className="flex items-center justify-center w-8 h-7 rounded-[10px] transition-colors"
           style={{ color: "rgba(0,0,0,0.15)" }}
         ><ArrowRightIcon className="w-3.5 h-3.5" /></button>
-        {/* Path bar */}
+
+        {/* Upload */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1 px-3 h-7 rounded-[10px] text-[12px] font-medium transition-colors"
+          style={{
+            background: uploading ? "rgba(124,111,212,0.05)" : "rgba(124,111,212,0.08)",
+            color: "#7c6fd4",
+            opacity: uploading ? 0.5 : 1,
+          }}
+          onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.background = "rgba(124,111,212,0.16)"; }}
+          onMouseLeave={(e) => { if (!uploading) e.currentTarget.style.background = "rgba(124,111,212,0.08)"; }}
+        >
+          {uploading ? (
+            <>{uploadProgress ? `${uploadProgress.pct}%` : <Spinner />}</>
+          ) : (
+            <span className="text-[16px] leading-none">+</span>
+          )}
+          {uploading ? (uploadProgress ? uploadProgress.label : "Uploading…") : "Upload"}
+        </button>
+
+        {/* New Folder */}
+        <button
+          onClick={handleCreateFolder}
+          className="flex items-center gap-1 px-3 h-7 rounded-[10px] text-[12px] font-medium transition-colors"
+          style={{ background: "rgba(0,0,0,0.04)", color: "#4a4658" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.08)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          New folder
+        </button>
+
+        <input ref={fileInputRef} type="file" className="hidden" onChange={onFileInput} />
+
+        {/* Path */}
         <div className="flex-1 flex items-center gap-1 text-[12px] mx-2" style={{ color: "#5e5a70" }}>
-          {columns.map((col, ci) => {
-            const idx = selInCol(ci);
-            const name = idx >= 0 && idx < col.length ? col[idx].name : ci === 0 ? "Home" : "...";
-            const isDeepest = ci === columns.length - 1 && !hasPreview;
+          {stack.map((s, ci) => {
+            const name = s.selectedIdx >= 0 ? s.entries[s.selectedIdx]?.name : "Home";
             return (
               <span key={ci} className="flex items-center gap-1">
                 {ci > 0 && <span className="opacity-30">›</span>}
-                <span style={{ color: isDeepest ? "#1d1a28" : "#5e5a70" }}>{name}</span>
+                <span style={{ color: ci === stack.length - 1 && !hasPreview ? "#1d1a28" : "#5e5a70" }}>{name}</span>
               </span>
             );
           })}
@@ -264,26 +441,49 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
             </span>
           )}
         </div>
+
         <span className="text-[11px]" style={{ color: "#9b96a8" }}>
-          {columns.reduce((sum, c) => sum + c.length, 0)} items
+          {stack.reduce((sum, s) => sum + s.entries.length, 0)} items
         </span>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mx-4 mt-2 rounded-[10px] px-3 py-1.5 text-[12px] flex items-center gap-2"
+          style={{ background: "rgba(239,68,68,0.06)", color: "#c41e1e" }}>
+          <span className="flex-1">{error}</span>
+          <button className="underline shrink-0" onClick={() => { const id = currentFolder?.folderId ?? null; loadFolder(id); }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Columns */}
       <div className="flex-1 flex overflow-x-auto">
-        {columns.map((col, ci) => (
+        {loading && (
+          <div className="flex items-center justify-center w-full py-16" style={{ color: "#9b96a8" }}>
+            <Spinner /><span className="ml-2 text-[14px]">Loading files…</span>
+          </div>
+        )}
+        {!loading && cols.map((col, ci) => (
           <div key={ci} className="h-full overflow-y-auto shrink-0"
             style={{ width: 220, borderRight: ci < totalCols - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
             {col.map((entry, fi) => {
               const Icon = fileIcon(entry);
               const isSel = selInCol(ci) === fi;
               return (
-                <button key={fi}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors outline-none"
+                <button key={entry.id}
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors outline-none group"
                   style={{ background: isSel ? "rgba(124,111,212,0.20)" : "transparent", color: isSel ? "#1d1a28" : "#3d3a4d" }}
                   onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
                   onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = "transparent"; }}
-                  onClick={() => { selectColumn(ci, fi); navigate(ci, entry); }}
+                  onClick={() => { selectColumn(ci, fi); navigateInto(fi, entry); }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (confirm(`Delete "${entry.name}"?`)) {
+                      handleDelete(entry.id);
+                    }
+                  }}
                 >
                   <span className="opacity-55"><Icon className="w-4 h-4 shrink-0" /></span>
                   <span className="truncate">{entry.name}</span>
@@ -291,12 +491,14 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                 </button>
               );
             })}
-            {col.length === 0 && (
-              <div className="px-4 py-8 text-center text-[13px]" style={{ color: "#9b96a8" }}>Empty folder</div>
+            {col.length === 0 && !error && (
+              <div className="px-4 py-8 text-center text-[13px]" style={{ color: "#9b96a8" }}>
+                {stack.length === 1 && ci === 0 ? "No files yet" : "Empty folder"}
+              </div>
             )}
           </div>
         ))}
-        {hasPreview && <PreviewColumn entry={previewEntry!} />}
+        {!loading && hasPreview && <PreviewColumn entry={previewEntry!} />}
       </div>
     </div>
   );

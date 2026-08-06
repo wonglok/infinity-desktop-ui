@@ -1,4 +1,4 @@
-export { FilesApp, type FSEntry, mockFS } from "./FilesApp";
+export { FilesApp } from "./FilesApp";
 export { TerminalApp } from "./TerminalApp";
 export { BrowserApp } from "./BrowserApp";
 export { SettingsApp } from "./SettingsApp";
