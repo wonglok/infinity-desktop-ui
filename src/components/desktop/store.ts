@@ -1,8 +1,13 @@
 "use client";
 
 import { create } from "zustand";
-import { signIn as nextAuthSignIn, signOut as nextAuthSignOut } from "next-auth/react";
+import { signOut as nextAuthSignOut } from "next-auth/react";
 import { defaultIcons, defaultApps } from "./defaultAppInfo";
+import {
+  persistDesktopState,
+  hydrateDesktopState,
+  clearDesktopState,
+} from "@/lib/storage";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -56,8 +61,6 @@ export interface User {
   name?: string | null;
   email?: string | null;
   image?: string | null;
-  username?: string;       // legacy: for local-login compatibility
-  avatar?: string;          // legacy
 }
 
 interface DesktopState {
@@ -79,8 +82,6 @@ interface DesktopState {
   isHydrated: boolean;
   isAuthenticated: boolean;
   user: User | null;
-  loginLoading: boolean;
-  loginError: string | null;
 
   // Window actions
   openWindow: (appId: string, overrides?: Partial<WindowInstance>) => void;
@@ -123,13 +124,7 @@ interface DesktopState {
       image?: string | null;
     } | null,
   ) => void;
-  login: (
-    username: string,
-    password: string,
-    rememberMe?: boolean,
-  ) => Promise<boolean>;
   logout: () => void;
-  clearLoginError: () => void;
 
   // App registry
   registerApp: (app: AppDefinition) => void;
@@ -141,6 +136,9 @@ interface DesktopState {
   }) => void;
   addDesktopIcon: (icon: DesktopIconDef) => void;
   removeDesktopIcon: (id: string) => void;
+
+  // Persistence
+  hydrateDesktop: () => Promise<void>;
 
   // App management
   removeApp: (appId: string) => void;
@@ -194,8 +192,6 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   isHydrated: false,
   isAuthenticated: false,
   user: null,
-  loginLoading: false,
-  loginError: null,
 
   // ── Window actions ─────────────────────────────────────────────────────
 
@@ -345,29 +341,8 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
 
   // Hydrate auth from next-auth session (call once on mount, after session loads)
   hydrateAuth: () => {
-    // next-auth session is read via useSession() in the component layer.
-    // This method is called from Desktop once the session is known.
-    // For backward compatibility: check localStorage for legacy credentials.
-    try {
-      const saved = localStorage.getItem("infinity-auth");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.username || parsed?.name) {
-          set({
-            isAuthenticated: true,
-            user: {
-              name: parsed.name ?? parsed.username,
-              email: parsed.email ?? null,
-              image: parsed.image ?? parsed.avatar ?? null,
-              username: parsed.username,
-              avatar: parsed.avatar,
-            },
-            isHydrated: true,
-          });
-          return;
-        }
-      }
-    } catch {}
+    // Auth is driven entirely by next-auth's useSession() — this just marks
+    // the store as hydrated so we stop showing the loading screen.
     set({ isHydrated: true });
   },
 
@@ -390,29 +365,9 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     }
   },
 
-  login: async (_username, _password, rememberMe) => {
-    // Google OAuth — redirect to Google sign-in
-    set({ loginLoading: true, loginError: null });
-    try {
-      await nextAuthSignIn("google", {
-        callbackUrl: "/",
-        redirect: true,
-      });
-      // The page will redirect so we won't reach here, but mark as not loading
-      // in case the redirect doesn't happen immediately
-    } catch {
-      set({
-        loginLoading: false,
-        loginError: "Failed to start Google sign-in. Please try again.",
-      });
-    }
-    return false;
-  },
-
   logout: async () => {
-    try {
-      localStorage.removeItem("infinity-auth");
-    } catch {}
+    // Clear persisted desktop state
+    clearDesktopState();
     // Sign out from next-auth and redirect to home
     await nextAuthSignOut({ callbackUrl: "/", redirect: true });
     set({
@@ -424,7 +379,31 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     });
   },
 
-  clearLoginError: () => set({ loginError: null }),
+  // ── Persistence ──────────────────────────────────────────────────────────
+
+  hydrateDesktop: async () => {
+    try {
+      const saved = await hydrateDesktopState();
+      const mergedApps = defaultApps.slice();
+      // Merge persisted user apps into defaults (avoid duplicates)
+      for (const app of saved.appRegistry) {
+        if (!mergedApps.find((a) => a.id === app.id)) {
+          mergedApps.push(app);
+        }
+      }
+      set({
+        windows: saved.windows,
+        desktopIcons:
+          saved.desktopIcons.length > 0
+            ? saved.desktopIcons
+            : defaultIcons,
+        appRegistry: mergedApps,
+        nextZIndex: saved.nextZIndex,
+      });
+    } catch {
+      // Keep defaults
+    }
+  },
 
   // ── App registry ───────────────────────────────────────────────────────
 
@@ -545,3 +524,29 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
     }));
   },
 }));
+
+// ── Auto-persist desktop state on changes ─────────────────────────────────
+//
+// Debounce is handled inside persistDesktopState itself, so every mutation
+// that touches windows / icons / registry / zIndex is saved to localForage.
+
+let _persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+useDesktopStore.subscribe((state) => {
+  // Skip persistence during initial load (not hydrated yet)
+  if (!state.isHydrated) return;
+
+  // Clear any pending write and re-schedule
+  if (_persistTimer) clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => {
+    persistDesktopState({
+      windows: state.windows,
+      desktopIcons: state.desktopIcons,
+      appRegistry: state.appRegistry.filter(
+        // Only persist user-added (remote) apps — defaults are recreated
+        (a) => !defaultApps.find((d) => d.id === a.id),
+      ),
+      nextZIndex: state.nextZIndex,
+    });
+  }, 300);
+});

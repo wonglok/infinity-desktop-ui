@@ -22,6 +22,7 @@ export function Desktop() {
     isAuthenticated,
     hydrateAuth,
     setSession,
+    hydrateDesktop,
     isMobile,
     setIsMobile,
     openWindow,
@@ -30,7 +31,8 @@ export function Desktop() {
   // Read next-auth session
   const { data: session, status } = useSession();
 
-  // Sync next-auth session → Zustand store
+  // Sync next-auth session → Zustand store + hydrate desktop state
+  const hasHydratedDesktop = useRef(false);
   useEffect(() => {
     if (status === "loading") return;
 
@@ -40,11 +42,16 @@ export function Desktop() {
         email: session.user.email,
         image: session.user.image,
       });
+      // Restore persisted windows & icon positions (once per mount)
+      if (!hasHydratedDesktop.current) {
+        hasHydratedDesktop.current = true;
+        hydrateDesktop();
+      }
     } else {
       // unauthenticated — fall back to legacy localStorage if present
       hydrateAuth();
     }
-  }, [session, status, setSession, hydrateAuth]);
+  }, [session, status, setSession, hydrateAuth, hydrateDesktop]);
 
   // Detect screen size — switches between desktop and mobile modes
   useEffect(() => {

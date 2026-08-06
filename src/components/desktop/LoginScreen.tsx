@@ -1,53 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef, type FormEvent } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useDesktopStore } from "./store";
 import { Background } from "./Background";
-import { Modal } from "./Modal";
-import { EyeIcon, EyeOffIcon, UserIcon, GoogleIcon } from "./icons";
+import { UserIcon, GoogleIcon } from "./icons";
 
 export function LoginScreen() {
-  const { login, loginLoading, loginError, clearLoginError, showModal } =
-    useDesktopStore();
+  const [loading, setLoading] = useState(false);
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const usernameRef = useRef<HTMLInputElement>(null);
-
-  // Restore saved credentials on client mount (SSR-safe)
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("infinity-auth");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.username) {
-          setUsername(parsed.username);
-          setRememberMe(true);
-        }
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    requestAnimationFrame(() => usernameRef.current?.focus());
-  }, []);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (loginLoading) return;
-    await login(username, password, rememberMe);
-  };
-
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
+  const handleSignIn = async () => {
+    setLoading(true);
     try {
       await signIn("google", { callbackUrl: "/" });
     } catch {
-      setGoogleLoading(false);
+      setLoading(false);
     }
   };
 
@@ -97,139 +63,46 @@ export function LoginScreen() {
               Welcome back
             </h2>
             <p className="text-center text-[12px] md:text-[14px] mb-6 md:mb-8" style={{ color: "#5e5a70" }}>
-              Sign in to your cloud
+              Sign in to continue to your cloud
             </p>
 
-            {/* Error */}
-            {loginError && (
-              <div className="mb-5 rounded-[14px] px-4 py-3 text-[13px]"
-                style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)", color: "#c41e1e" }}>
-                {loginError}
-              </div>
-            )}
-
             {/* Google Sign-In */}
-            <div className="mb-5">
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={googleLoading || loginLoading}
-                className="w-full flex items-center justify-center gap-2.5 rounded-[14px] py-3 text-[14px] md:text-[15px] font-medium transition-all duration-200 touch-target"
-                style={{
-                  background: "#fff",
-                  color: "#1d1a28",
-                  border: "1px solid rgba(0,0,0,0.12)",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#fafafa"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.18)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)"; }}
-              >
-                {googleLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span>Signing in…</span>
-                  </>
-                ) : (
-                  <>
-                    <GoogleIcon className="w-5 h-5" />
-                    <span>Continue with Google</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
-              <span className="text-[12px] font-medium" style={{ color: "#8c88a0" }}>or</span>
-              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-3.5 md:space-y-4">
-              <div>
-                <label htmlFor="login-username" className="block text-[12px] font-medium mb-2" style={{ color: "#4a4658" }}>
-                  Username
-                </label>
-                <input ref={usernameRef} id="login-username" type="text"
-                  value={username} onChange={(e) => { setUsername(e.target.value); if (loginError) clearLoginError(); }}
-                  placeholder="Your username" autoComplete="username"
-                  className="w-full rounded-[14px] px-4 py-3 text-[15px] placeholder-black/15 outline-none transition-all duration-200"
-                  style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.10)", color: "#1d1a28" }}
-                  onFocus={(e) => { e.target.style.borderColor = "rgba(124,111,212,0.45)"; e.target.style.background = "rgba(0,0,0,0.05)"; }}
-                  onBlur={(e) => { e.target.style.borderColor = "rgba(0,0,0,0.10)"; e.target.style.background = "rgba(0,0,0,0.03)"; }}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="login-password" className="block text-[12px] font-medium mb-2" style={{ color: "#4a4658" }}>
-                  Password
-                </label>
-                <div className="relative">
-                  <input id="login-password" type={showPassword ? "text" : "password"}
-                    value={password} onChange={(e) => { setPassword(e.target.value); if (loginError) clearLoginError(); }}
-                    placeholder="Your password" autoComplete="current-password"
-                    className="w-full rounded-[14px] px-4 py-3 pr-12 text-[15px] placeholder-black/15 outline-none transition-all duration-200"
-                    style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.10)", color: "#1d1a28" }}
-                    onFocus={(e) => { e.target.style.borderColor = "rgba(124,111,212,0.45)"; e.target.style.background = "rgba(0,0,0,0.05)"; }}
-                    onBlur={(e) => { e.target.style.borderColor = "rgba(0,0,0,0.10)"; e.target.style.background = "rgba(0,0,0,0.03)"; }}
-                  />
-                  <button type="button" onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
-                    style={{ color: "rgba(0,0,0,0.3)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(0,0,0,0.55)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(0,0,0,0.3)")}
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[12px] md:text-[13px] pt-1 flex-wrap gap-y-2">
-                <label className="flex items-center gap-2 cursor-pointer" style={{ color: "#4a4658" }}>
-                  <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="rounded accent-[#7c6fd4] w-4 h-4" />
-                  <span>Remember me</span>
-                </label>
-                <button type="button" className="transition-colors hover:opacity-80 font-medium" style={{ color: "#7c6fd4" }}
-                  onClick={() => showModal("Reset password", "Enter your email and we'll send you a link.", "prompt", { placeholder: "you@example.com" })}
-                >Forgot password?</button>
-              </div>
-
-              <button type="submit" disabled={loginLoading}
-                className="w-full flex items-center justify-center gap-2.5 rounded-[14px] py-3 md:py-3 text-[14px] md:text-[15px] font-medium transition-all duration-200 mt-1 touch-target"
-                style={loginLoading ? {
-                  background: "rgba(124,111,212,0.25)", color: "rgba(255,255,255,0.7)", cursor: "wait",
-                } : {
-                  background: "rgba(124,111,212,0.65)", color: "#fff",
-                  boxShadow: "0 4px 20px rgba(124,111,212,0.18)",
-                }}
-                onMouseEnter={(e) => { if (!loginLoading) e.currentTarget.style.background = "rgba(124,111,212,0.82)"; }}
-                onMouseLeave={(e) => { if (!loginLoading) e.currentTarget.style.background = "rgba(124,111,212,0.65)"; }}
-              >
-                {loginLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span>Signing in…</span>
-                  </>
-                ) : ("Sign in")}
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={handleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2.5 rounded-[14px] py-3 text-[14px] md:text-[15px] font-medium transition-all duration-200 touch-target"
+              style={{
+                background: "#fff",
+                color: "#1d1a28",
+                border: "1px solid rgba(0,0,0,0.12)",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#fafafa"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.18)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)"; }}
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span>Signing in…</span>
+                </>
+              ) : (
+                <>
+                  <GoogleIcon className="w-5 h-5" />
+                  <span>Continue with Google</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
         <p className="mt-4 md:mt-5 text-center text-[12px] md:text-[13px] px-4" style={{ color: "#6b6680" }}>
-          Press Enter to submit · Any credentials (min. 2 characters)
+          Infinity Cloud OS
         </p>
       </div>
-
-      <Modal />
     </div>
   );
 }
