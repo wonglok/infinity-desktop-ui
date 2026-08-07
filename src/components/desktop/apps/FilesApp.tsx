@@ -379,8 +379,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
 
   function handleWindowDrop(e: React.DragEvent) {
     e.preventDefault();
-    dragOverCounterRef.current = 0;
-    setDragOverWindow(false);
+    clearDragOverlay();
     // External files from Finder / File Explorer
     if (e.dataTransfer.files.length > 0) {
       handleExternalDrop(e.dataTransfer.files);
@@ -388,6 +387,20 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     }
     commitDrop(currentFolderId);
   }
+
+  function clearDragOverlay() {
+    dragOverCounterRef.current = 0;
+    setDragOverWindow(false);
+  }
+
+  // Clear green highlight on drag-end (e.g. drag cancelled outside window)
+  useEffect(() => {
+    function onDragEnd() {
+      clearDragOverlay();
+    }
+    window.addEventListener("dragend", onDragEnd);
+    return () => window.removeEventListener("dragend", onDragEnd);
+  }, []);
 
   async function handleExternalDrop(fileList: FileList) {
     const files = Array.from(fileList);
@@ -1443,6 +1456,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       onDrop={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        clearDragOverlay();
         if (e.dataTransfer.files.length > 0) {
           handleExternalDrop(e.dataTransfer.files);
           return;
