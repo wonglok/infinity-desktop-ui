@@ -154,6 +154,19 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const [dragEntryId, setDragEntryId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
+  // ── Drag-to-select ──────────────────────────────────────────────────────
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [selectRect, setSelectRect] = useState<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  } | null>(null);
+  const selectStartRef = useRef<{ x: number; y: number } | null>(null);
+  const selectRectRef = useRef(selectRect);
+  selectRectRef.current = selectRect;
+
   // ── Context menu ────────────────────────────────────────────────────────
 
   const [contextMenu, setContextMenu] = useState<{
@@ -456,6 +469,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           else if (entry.cdnUrl) window.open(entry.cdnUrl, "_blank");
         }}
         onContextMenu={(e) => openContextMenu(e, entry)}
+        data-entry-id={entry.id}
         className={`flex items-center gap-2 transition-colors outline-none cursor-default ${compact ? "px-3 py-1.5 text-[13px]" : "px-4 py-2 text-[14px]"}`}
         style={{
           background: isDropTarget
@@ -758,11 +772,90 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     </div>
   ) : null;
 
+  // ── Drag-to-select effect ───────────────────────────────────────────────
+
+  const isDraggingSelect = selectRect !== null;
+
+  useEffect(() => {
+    if (!isDraggingSelect) return;
+    function onMove(e: MouseEvent) {
+      if (!contentRef.current || !selectStartRef.current) return;
+      const r = contentRef.current.getBoundingClientRect();
+      setSelectRect({
+        x1: selectStartRef.current.x,
+        y1: selectStartRef.current.y,
+        x2: e.clientX - r.left + contentRef.current.scrollLeft,
+        y2: e.clientY - r.top + contentRef.current.scrollTop,
+      });
+    }
+    function onUp() {
+      const rect = selectRectRef.current;
+      if (!rect || !contentRef.current) {
+        setSelectRect(null);
+        selectStartRef.current = null;
+        return;
+      }
+      // Compute intersection with entry elements
+      const entries = contentRef.current.querySelectorAll("[data-entry-id]");
+      const ids = new Set<string>();
+      const rx1 = Math.min(rect.x1, rect.x2);
+      const ry1 = Math.min(rect.y1, rect.y2);
+      const rx2 = Math.max(rect.x1, rect.x2);
+      const ry2 = Math.max(rect.y1, rect.y2);
+      const minArea = 4; // require meaningful drag
+
+      if ((rx2 - rx1) * (ry2 - ry1) >= minArea) {
+        for (const el of entries) {
+          const b = el.getBoundingClientRect();
+          const cr = contentRef.current.getBoundingClientRect();
+          const ex1 = b.left - cr.left + contentRef.current.scrollLeft;
+          const ey1 = b.top - cr.top + contentRef.current.scrollTop;
+          const ex2 = ex1 + b.width;
+          const ey2 = ey1 + b.height;
+          // Check rectangle intersection
+          if (rx1 < ex2 && rx2 > ex1 && ry1 < ey2 && ry2 > ey1) {
+            ids.add(el.getAttribute("data-entry-id")!);
+          }
+        }
+      }
+      if (ids.size > 0) setSelectedIds(ids);
+      setSelectRect(null);
+      selectStartRef.current = null;
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isDraggingSelect]);
+
+  function handleContentMouseDown(e: React.MouseEvent) {
+    // Only start selection on left-click on empty space
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-entry-id]")) return;
+    if (!contentRef.current) return;
+    const r = contentRef.current.getBoundingClientRect();
+    selectStartRef.current = {
+      x: e.clientX - r.left + contentRef.current.scrollLeft,
+      y: e.clientY - r.top + contentRef.current.scrollTop,
+    };
+    setSelectRect({
+      x1: selectStartRef.current.x,
+      y1: selectStartRef.current.y,
+      x2: selectStartRef.current.x,
+      y2: selectStartRef.current.y,
+    });
+  }
+
   // ── Content area ───────────────────────────────────────────────────────
 
   const contentArea = (
     <div
-      className="flex-1 overflow-y-auto"
+      ref={contentRef}
+      className="flex-1 overflow-y-auto relative select-none"
+      onMouseDown={handleContentMouseDown}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
@@ -777,6 +870,21 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     >
       {errorBanner}
       {loadingView}
+
+      {/* Selection rectangle overlay */}
+      {selectRect && (
+        <div
+          className="absolute pointer-events-none z-40"
+          style={{
+            left: Math.min(selectRect.x1, selectRect.x2),
+            top: Math.min(selectRect.y1, selectRect.y2),
+            width: Math.abs(selectRect.x2 - selectRect.x1),
+            height: Math.abs(selectRect.y2 - selectRect.y1),
+            background: "rgba(59,130,246,0.15)",
+            border: "1px solid rgba(59,130,246,0.5)",
+          }}
+        />
+      )}
       {!loading &&
         (viewMode === "grid" ? (
           <div
@@ -839,6 +947,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                         }
                       : undefined
                   }
+                  data-entry-id={entry.id}
                   className="flex flex-col items-center gap-1 p-2 rounded-[10px] transition-colors cursor-default text-center"
                   style={{
                     background: isDropTarget
