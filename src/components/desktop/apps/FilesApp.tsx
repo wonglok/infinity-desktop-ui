@@ -149,10 +149,12 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── DnD state ──────────────────────────────────────────────────────────
+  // ── DnD state (shared across windows via store) ────────────────────────
 
-  const [dragEntryId, setDragEntryId] = useState<string | null>(null);
-  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const dragEntryId = useDesktopStore((s) => s.dragEntryId);
+  const dragOverFolderId = useDesktopStore((s) => s.dragOverFolderId);
+  const setDragEntryId = useDesktopStore((s) => s.setDragEntryId);
+  const setDragOverFolderId = useDesktopStore((s) => s.setDragOverFolderId);
 
   // ── Drag-to-select ──────────────────────────────────────────────────────
 

@@ -78,6 +78,12 @@ interface DesktopState {
   // Responsive
   setIsMobile: (v: boolean) => void;
 
+  // Drag state (shared across windows)
+  dragEntryId: string | null;
+  dragOverFolderId: string | null;
+  setDragEntryId: (id: string | null) => void;
+  setDragOverFolderId: (id: string | null) => void;
+
   // Auth
   isHydrated: boolean;
   isAuthenticated: boolean;
@@ -187,6 +193,12 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   modal: { open: false, title: "", message: "", type: "alert" },
   nextZIndex: 10,
   isMobile: false,
+
+  // Drag state — shared across windows for cross-window drag-and-drop
+  dragEntryId: null,
+  dragOverFolderId: null,
+  setDragEntryId: (id) => set({ dragEntryId: id }),
+  setDragOverFolderId: (id) => set({ dragOverFolderId: id }),
 
   // Auth — starts unauthenticated; hydrateAuth runs on client mount
   isHydrated: false,
