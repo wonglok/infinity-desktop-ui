@@ -16,8 +16,8 @@ export const defaultIcons: DesktopIconDef[] = [
     label: "AppStore",
     icon: "store",
     appId: "appstore",
-    x: 150,
-    y: 28,
+    x: 28,
+    y: 140,
   },
   ...(process.env.NODE_ENV === "development"
     ? ([
@@ -26,8 +26,8 @@ export const defaultIcons: DesktopIconDef[] = [
           label: "DevelopmentApp",
           icon: "globe",
           appId: "devapp",
-          x: 150,
-          y: 140,
+          x: 28,
+          y: 252,
         },
       ] as DesktopIconDef[])
     : []),
