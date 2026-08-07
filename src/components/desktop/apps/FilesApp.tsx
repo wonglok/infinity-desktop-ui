@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { type WindowInstance, useDesktopStore } from "../store";
 import {
   FileSDKClient,
@@ -123,6 +123,189 @@ function GridIcon() {
 
 type ViewMode = "list" | "detail" | "grid";
 
+// ── PreviewPane ─────────────────────────────────────────────────────────────
+
+function PreviewPane({
+  entry,
+  onClose,
+}: {
+  entry: FileEntry;
+  onClose: () => void;
+}) {
+  const ext = entry.ext ?? "";
+  const mime = entry.mimeType ?? "";
+  const isImage =
+    /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i.test(`.${ext}`) ||
+    mime.startsWith("image/");
+  const isVideo =
+    /\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(`.${ext}`) ||
+    mime.startsWith("video/");
+  const isAudio =
+    /\.(mp3|m4a|flac|wav|ogg|aac|wma)$/i.test(`.${ext}`) ||
+    mime.startsWith("audio/");
+  const Icon = fileIcon(entry);
+
+  // Esc key to close
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const previewContent = (() => {
+    if (!entry.cdnUrl) {
+      return (
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span style={{ color: "#7c6fd4" }}>
+            <Icon className="w-16 h-16 opacity-25" />
+          </span>
+          <span className="text-[13px]" style={{ color: "#9b96a8" }}>
+            No preview available
+          </span>
+        </div>
+      );
+    }
+
+    if (isImage) {
+      return (
+        <img
+          src={entry.cdnUrl}
+          alt={entry.name}
+          className="max-w-full max-h-full object-contain rounded-lg"
+          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+        />
+      );
+    }
+
+    if (isVideo) {
+      return (
+        <video
+          src={entry.cdnUrl}
+          controls
+          className="max-w-full max-h-full rounded-lg"
+          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+        />
+      );
+    }
+
+    if (isAudio) {
+      return (
+        <div className="flex flex-col items-center gap-4 w-full max-w-[260px]">
+          <span style={{ color: "#7c6fd4" }}>
+            <MusicIcon className="w-16 h-16 opacity-25" />
+          </span>
+          <audio src={entry.cdnUrl} controls className="w-full" />
+          <span
+            className="text-[12px] text-center break-all leading-tight"
+            style={{ color: "#3d3a4d" }}
+          >
+            {entry.name}
+          </span>
+        </div>
+      );
+    }
+
+    // Generic file: show icon + metadata
+    return (
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span style={{ color: "#7c6fd4" }}>
+          <Icon className="w-16 h-16 opacity-25" />
+        </span>
+        <span className="text-[13px]" style={{ color: "#9b96a8" }}>
+          No preview available
+        </span>
+      </div>
+    );
+  })();
+
+  return (
+    <div
+      className="flex flex-col w-80 shrink-0"
+      style={{
+        borderLeft: "1px solid rgba(0,0,0,0.08)",
+        background: "rgba(255,255,255,0.5)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 shrink-0"
+        style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}
+      >
+        <Icon className="w-4 h-4 opacity-50 shrink-0" />
+        <span
+          className="flex-1 text-[13px] font-medium truncate"
+          style={{ color: "#3d3a4d" }}
+        >
+          {entry.name}
+        </span>
+        <button
+          onClick={onClose}
+          className="flex items-center justify-center w-6 h-6 rounded-md transition-colors"
+          style={{ color: "#9b96a8" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(0,0,0,0.06)";
+            e.currentTarget.style.color = "#3d3a4d";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "#9b96a8";
+          }}
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Preview content */}
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+        {previewContent}
+      </div>
+
+      {/* Metadata */}
+      <div
+        className="px-3 py-2.5 shrink-0 space-y-1.5"
+        style={{
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+          background: "rgba(0,0,0,0.015)",
+        }}
+      >
+        <div className="flex justify-between text-[11px]">
+          <span style={{ color: "#9b96a8" }}>Size</span>
+          <span style={{ color: "#3d3a4d" }} className="font-medium">
+            {formatSize(entry.size ?? 0)}
+          </span>
+        </div>
+        <div className="flex justify-between text-[11px]">
+          <span style={{ color: "#9b96a8" }}>Type</span>
+          <span
+            style={{ color: "#3d3a4d" }}
+            className="font-medium truncate max-w-[140px]"
+          >
+            {entry.mimeType ?? "—"}
+          </span>
+        </div>
+        <div className="flex justify-between text-[11px]">
+          <span style={{ color: "#9b96a8" }}>Modified</span>
+          <span style={{ color: "#3d3a4d" }} className="font-medium">
+            {formatDate(entry.updatedAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── FilesApp ────────────────────────────────────────────────────────────────
 
 export function FilesApp({ window: _win }: { window: WindowInstance }) {
@@ -150,6 +333,16 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     pct: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Preview entry (derived from selection) ─────────────────────────────
+
+  const previewEntry = useMemo(() => {
+    if (selectedIds.size !== 1) return null;
+    const id = Array.from(selectedIds)[0];
+    const entry = entries.find((e) => e.id === id);
+    if (!entry || entry.kind === "folder") return null;
+    return entry;
+  }, [selectedIds, entries]);
 
   const [movePickerOpen, setMovePickerOpen] = useState(false);
   const movePickerRef = useRef<HTMLDivElement>(null);
@@ -449,6 +642,9 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           else next.add(entry.id);
           return next;
         });
+      } else if (isSel && entry.kind === "folder") {
+        // Already selected folder → single click to open
+        navigateToFolder(entry);
       } else {
         setSelectedIds(new Set([entry.id]));
       }
@@ -490,8 +686,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
         }
         onClick={handleClick}
         onDoubleClick={() => {
-          if (entry.kind === "folder") navigateToFolder(entry);
-          else if (entry.cdnUrl) window.open(entry.cdnUrl, "_blank");
+          if (entry.kind !== "folder" && entry.cdnUrl)
+            window.open(entry.cdnUrl, "_blank");
         }}
         onContextMenu={(e) => openContextMenu(e, entry)}
         data-entry-id={entry.id}
@@ -761,49 +957,24 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
 
   // ── Selection actions toolbar ───────────────────────────────────────────
 
-  const selectionToolbar =
-    selectedIds.size > 0 ? (
-      <div
-        className="flex items-center gap-2 px-3 py-1.5 shrink-0"
-        style={{
-          background: "rgba(124,111,212,0.06)",
-          borderBottom: "1px solid rgba(124,111,212,0.12)",
-        }}
-      >
-        <span className="text-[12px] font-medium" style={{ color: "#5e5a70" }}>
-          {selectedIds.size} selected
-        </span>
+  const hasSelection = selectedIds.size > 0;
 
-        <button
-          onClick={handleGroupIntoFolder}
-          className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
-          style={{ background: "rgba(124,111,212,0.1)", color: "#7c6fd4" }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "rgba(124,111,212,0.2)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "rgba(124,111,212,0.1)")
-          }
-        >
-          <svg
-            className="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-            <line x1="12" y1="11" x2="12" y2="17" />
-            <line x1="9" y1="14" x2="15" y2="14" />
-          </svg>
-          Group into sub-folder
-        </button>
+  const selectionToolbar = (
+    <div
+      className="flex items-center gap-2 px-3 py-1.5 shrink-0"
+      style={{
+        background: "rgba(124,111,212,0.06)",
+        borderBottom: "1px solid rgba(124,111,212,0.12)",
+      }}
+    >
+      <span className="text-[12px] font-medium" style={{ color: "#5e5a70" }}>
+        {selectedIds.size} selected
+      </span>
 
-        {/* Move button + folder picker */}
-        <div className="relative">
+      {hasSelection && (
+        <>
           <button
-            onClick={() => setMovePickerOpen((v) => !v)}
+            onClick={handleGroupIntoFolder}
             className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
             style={{ background: "rgba(124,111,212,0.1)", color: "#7c6fd4" }}
             onMouseEnter={(e) =>
@@ -821,141 +992,171 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
               strokeWidth="2"
               strokeLinecap="round"
             >
-              <polyline points="5 9 2 12 5 15" />
-              <polyline points="9 5 12 2 15 5" />
-              <polyline points="15 19 12 22 9 19" />
-              <polyline points="19 15 22 12 19 9" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <line x1="12" y1="2" x2="12" y2="22" />
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              <line x1="12" y1="11" x2="12" y2="17" />
+              <line x1="9" y1="14" x2="15" y2="14" />
             </svg>
-            Move
+            Group into sub-folder
           </button>
-          {movePickerOpen && (
-            <div
-              ref={movePickerRef}
-              className="absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-[10px] py-1 shadow-lg"
-              style={{
-                background: "rgba(255,255,255,0.97)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(0,0,0,0.08)",
-              }}
+
+          {/* Move button + folder picker */}
+          <div className="relative">
+            <button
+              onClick={() => setMovePickerOpen((v) => !v)}
+              className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
+              style={{ background: "rgba(124,111,212,0.1)", color: "#7c6fd4" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "rgba(124,111,212,0.2)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "rgba(124,111,212,0.1)")
+              }
             >
+              <svg
+                className="w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <polyline points="5 9 2 12 5 15" />
+                <polyline points="9 5 12 2 15 5" />
+                <polyline points="15 19 12 22 9 19" />
+                <polyline points="19 15 22 12 19 9" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <line x1="12" y1="2" x2="12" y2="22" />
+              </svg>
+              Move
+            </button>
+            {movePickerOpen && (
               <div
-                className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider"
-                style={{ color: "#9b96a8" }}
+                ref={movePickerRef}
+                className="absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-[10px] py-1 shadow-lg"
+                style={{
+                  background: "rgba(255,255,255,0.97)",
+                  backdropFilter: "blur(12px)",
+                  border: "1px solid rgba(0,0,0,0.08)",
+                }}
               >
-                Move to folder
-              </div>
-              {/* Home (root) */}
-              <button
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
-                style={{ color: "#3d3a4d" }}
-                onClick={() => handleMoveSelected(null)}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }
-              >
-                <svg
-                  className="w-3.5 h-3.5 opacity-50"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                Home
-              </button>
-              {/* Sibling folders */}
-              {entries
-                .filter((e) => e.kind === "folder")
-                .map((f) => (
-                  <button
-                    key={f.id}
-                    className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
-                    style={{ color: "#3d3a4d" }}
-                    onClick={() => handleMoveSelected(f.id)}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "transparent")
-                    }
-                  >
-                    <FolderIcon className="w-3.5 h-3.5 opacity-40" />
-                    {f.name}
-                  </button>
-                ))}
-              {entries.filter((e) => e.kind === "folder").length === 0 && (
                 <div
-                  className="px-3 py-2 text-[12px]"
+                  className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider"
                   style={{ color: "#9b96a8" }}
                 >
-                  No sub-folders
+                  Move to folder
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                {/* Home (root) */}
+                <button
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
+                  style={{ color: "#3d3a4d" }}
+                  onClick={() => handleMoveSelected(null)}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
+                >
+                  <svg
+                    className="w-3.5 h-3.5 opacity-50"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  Home
+                </button>
+                {/* Sibling folders */}
+                {entries
+                  .filter((e) => e.kind === "folder")
+                  .map((f) => (
+                    <button
+                      key={f.id}
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
+                      style={{ color: "#3d3a4d" }}
+                      onClick={() => handleMoveSelected(f.id)}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "transparent")
+                      }
+                    >
+                      <FolderIcon className="w-3.5 h-3.5 opacity-40" />
+                      {f.name}
+                    </button>
+                  ))}
+                {entries.filter((e) => e.kind === "folder").length === 0 && (
+                  <div
+                    className="px-3 py-2 text-[12px]"
+                    style={{ color: "#9b96a8" }}
+                  >
+                    No sub-folders
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-        <div className="flex-1" />
+          <div className="flex-1" />
 
-        <button
-          onClick={handleDeleteSelected}
-          className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
-          style={{ color: "#d32f2f" }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "rgba(211,47,47,0.08)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
-        >
-          <svg
-            className="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
+          <button
+            onClick={handleDeleteSelected}
+            className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
+            style={{ color: "#d32f2f" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "rgba(211,47,47,0.08)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "transparent")
+            }
           >
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
-          Remove
-        </button>
+            <svg
+              className="w-3.5 h-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            Remove
+          </button>
 
-        <button
-          onClick={() => setSelectedIds(new Set())}
-          className="flex items-center gap-1 px-2 h-6 rounded-[6px] text-[11px] transition-colors"
-          style={{ color: "#9b96a8" }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
-        >
-          <svg
-            className="w-3 h-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="flex items-center gap-1 px-2 h-6 rounded-[6px] text-[11px] transition-colors"
+            style={{ color: "#9b96a8" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "transparent")
+            }
           >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-          Clear
-        </button>
-      </div>
-    ) : null;
+            <svg
+              className="w-3 h-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Clear
+          </button>
+        </>
+      )}
+    </div>
+  );
 
   // ── Error banner ───────────────────────────────────────────────────────
 
@@ -1118,6 +1319,9 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                     else next.add(entry.id);
                     return next;
                   });
+                } else if (isSel && entry.kind === "folder") {
+                  // Already selected folder → single click to open
+                  navigateToFolder(entry);
                 } else {
                   setSelectedIds(new Set([entry.id]));
                 }
@@ -1174,8 +1378,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                   }}
                   onClick={handleClick}
                   onDoubleClick={() => {
-                    if (entry.kind === "folder") navigateToFolder(entry);
-                    else if (entry.cdnUrl) window.open(entry.cdnUrl, "_blank");
+                    if (entry.kind !== "folder" && entry.cdnUrl)
+                      window.open(entry.cdnUrl, "_blank");
                   }}
                   onContextMenu={(e) => openContextMenu(e, entry)}
                   onMouseEnter={(e) => {
@@ -1369,7 +1573,15 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     <div className="flex h-full flex-col">
       {toolbar}
       {selectionToolbar}
-      {contentArea}
+      <div className="flex flex-1 min-h-0">
+        {contentArea}
+        {previewEntry && (
+          <PreviewPane
+            entry={previewEntry}
+            onClose={() => setSelectedIds(new Set())}
+          />
+        )}
+      </div>
       {contextMenuEl}
     </div>
   );
