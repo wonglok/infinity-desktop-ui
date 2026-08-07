@@ -360,7 +360,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
 
   function handleWindowDragOver(e: React.DragEvent) {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect =
+      e.dataTransfer.files.length > 0 ? "copy" : "move";
   }
 
   function handleWindowDragEnter(_e: React.DragEvent) {
@@ -380,7 +381,59 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     e.preventDefault();
     dragOverCounterRef.current = 0;
     setDragOverWindow(false);
+    // External files from Finder / File Explorer
+    if (e.dataTransfer.files.length > 0) {
+      handleExternalDrop(e.dataTransfer.files);
+      return;
+    }
     commitDrop(currentFolderId);
+  }
+
+  async function handleExternalDrop(fileList: FileList) {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    try {
+      await Promise.all(
+        files.map(async (file) => {
+          setUploadProgress({ label: file.name, pct: 0 });
+          const { entry, uploadUrl } = await FileSDKClient.signUpload(
+            file.name,
+            file.type || "application/octet-stream",
+            currentFolderId,
+          );
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", uploadUrl);
+            xhr.setRequestHeader(
+              "Content-Type",
+              file.type || "application/octet-stream",
+            );
+            xhr.upload.onprogress = (ev) => {
+              if (ev.lengthComputable)
+                setUploadProgress({
+                  label: file.name,
+                  pct: Math.round((ev.loaded / ev.total) * 100),
+                });
+            };
+            xhr.onload = () =>
+              xhr.status >= 200 && xhr.status < 300
+                ? resolve()
+                : reject(new Error(`Upload failed (${xhr.status})`));
+            xhr.onerror = () => reject(new Error("Network error"));
+            xhr.send(file);
+          });
+          await FileSDKClient.confirmUpload(entry.id, file.size);
+        }),
+      );
+      await reloadCurrent();
+    } catch (err: any) {
+      setError(err.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
+    }
   }
 
   // Resolve the set of entry IDs being dragged (all selected if drag source
@@ -1389,6 +1442,10 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       }}
       onDrop={(e) => {
         e.preventDefault();
+        if (e.dataTransfer.files.length > 0) {
+          handleExternalDrop(e.dataTransfer.files);
+          return;
+        }
         commitDrop(currentFolderId);
       }}
     >
