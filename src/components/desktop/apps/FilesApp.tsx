@@ -960,7 +960,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
             color: currentFolderId === null ? "#1d1a28" : "#5e5a70",
             background:
               dragOverFolderId === "__home__"
-                ? "rgba(34,197,94,0.2)"
+                ? "rgba(129,216,208,0.2)"
                 : "transparent",
           }}
           onClick={() => navigateToBreadcrumb(-1)}
@@ -990,7 +990,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                 color: i === breadcrumb.length - 1 ? "#1d1a28" : "#5e5a70",
                 background:
                   dragOverFolderId === c.id
-                    ? "rgba(34,197,94,0.2)"
+                    ? "rgba(129,216,208,0.2)"
                     : "transparent",
               }}
               onClick={() => navigateToBreadcrumb(i)}
@@ -1845,7 +1845,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
         {dragOverWindow && (
           <div
             className="absolute inset-0 z-50 pointer-events-none"
-            style={{ background: "rgba(34,197,94,0.25)" }}
+            style={{ background: "rgba(129,216,208,0.5)" }}
           />
         )}
         {toolbar}
@@ -1869,7 +1869,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       {dragOverWindow && (
         <div
           className="absolute inset-0 z-50 pointer-events-none"
-          style={{ background: "rgba(34,197,94,0.25)" }}
+          style={{ background: "rgba(129,216,208,0.5)" }}
         />
       )}
       {toolbar}
