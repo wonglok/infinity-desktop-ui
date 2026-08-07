@@ -513,14 +513,10 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   // ── App management ───────────────────────────────────────────────────────
 
   // Remove an app from the registry, its desktop icons, and any open windows.
-  // Refuses to remove system apps (files, terminal, browser, settings, widgets,
-  // remote, appstore).
+  // Refuses to remove system apps (files, widgets, remote, appstore).
   removeApp: (appId) => {
     const SYSTEM_APPS = new Set([
       "files",
-      "terminal",
-      "browser",
-      "settings",
       "appstore",
     ]);
     if (SYSTEM_APPS.has(appId)) return;

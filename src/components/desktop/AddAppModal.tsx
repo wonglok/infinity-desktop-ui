@@ -8,7 +8,6 @@ import { getIcon, CloseIcon } from "./icons";
 
 const APP_ICON_KEYS = [
   "folder",
-  "terminal",
   "globe",
   "gear",
   "monitor",

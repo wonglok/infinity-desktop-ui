@@ -10,9 +10,6 @@ import { useDesktopStore, type WindowInstance } from "./store";
 import { getIcon } from "./icons";
 import {
   FilesApp,
-  TerminalApp,
-  BrowserApp,
-  SettingsApp,
   DefaultApp,
   AppStoreApp,
 } from "./apps";
@@ -43,9 +40,6 @@ const appContentMap: Record<
   React.ComponentType<{ window: WindowInstance }>
 > = {
   files: FilesApp,
-  terminal: TerminalApp,
-  browser: BrowserApp,
-  settings: SettingsApp,
   appstore: AppStoreApp,
 };
 

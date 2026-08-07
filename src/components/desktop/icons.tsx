@@ -367,7 +367,6 @@ export function ExternalLinkIcon(p: IconProps) {
 
 const iconMap: Record<string, React.ComponentType<IconProps>> = {
   folder: FolderIcon,
-  terminal: TerminalIcon,
   globe: GlobeIcon,
   gear: GearIcon,
   start: StartIcon,

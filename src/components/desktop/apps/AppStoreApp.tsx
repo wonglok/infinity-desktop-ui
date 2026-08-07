@@ -12,9 +12,6 @@ import { getIcon, SearchIcon, TrashIcon, ExternalLinkIcon } from "../icons";
 
 const SYSTEM_APPS = new Set([
   "files",
-  "terminal",
-  "browser",
-  "settings",
   "appstore",
 ]);
 
