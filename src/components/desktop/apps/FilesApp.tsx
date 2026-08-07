@@ -128,6 +128,8 @@ type ViewMode = "list" | "detail" | "grid";
 export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const isMobile = useDesktopStore((s) => s.isMobile);
   const showModal = useDesktopStore((s) => s.showModal);
+  const filesRefreshKey = useDesktopStore((s) => s.filesRefreshKey);
+  const triggerFilesRefresh = useDesktopStore((s) => s.triggerFilesRefresh);
 
   // ── State ──────────────────────────────────────────────────────────────
 
@@ -148,6 +150,9 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     pct: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [movePickerOpen, setMovePickerOpen] = useState(false);
+  const movePickerRef = useRef<HTMLDivElement>(null);
 
   // ── DnD state (shared across windows via store) ────────────────────────
 
@@ -253,6 +258,20 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     loadFolder(null);
   }, []);
 
+  // Reload when another FilesApp window triggers a refresh
+  const prevRefreshKeyRef = useRef(filesRefreshKey);
+  const skipNextRefreshRef = useRef(false);
+  useEffect(() => {
+    if (prevRefreshKeyRef.current !== filesRefreshKey) {
+      prevRefreshKeyRef.current = filesRefreshKey;
+      if (skipNextRefreshRef.current) {
+        skipNextRefreshRef.current = false;
+        return;
+      }
+      reloadCurrent();
+    }
+  }, [filesRefreshKey]);
+
   // ── Mutations ──────────────────────────────────────────────────────────
 
   async function handleUpload(file: File) {
@@ -344,6 +363,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     try {
       await FileSDKClient.move(entryId, targetFolderId);
       await reloadCurrent();
+      skipNextRefreshRef.current = true;
+      triggerFilesRefresh();
     } catch (err: any) {
       setError(err.message ?? "Move failed");
     }
@@ -396,6 +417,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       );
       setSelectedIds(new Set());
       await reloadCurrent();
+      skipNextRefreshRef.current = true;
+      triggerFilesRefresh();
     } catch (err: any) {
       setError(err.message ?? "Failed to group items");
     }
@@ -678,6 +701,44 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     </div>
   );
 
+  async function handleMoveSelected(targetFolderId: string | null) {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    try {
+      await Promise.all(
+        ids.map((id) => FileSDKClient.move(id, targetFolderId!)),
+      );
+      setSelectedIds(new Set());
+      setMovePickerOpen(false);
+      await reloadCurrent();
+      skipNextRefreshRef.current = true;
+      triggerFilesRefresh();
+    } catch (err: any) {
+      setError(err.message ?? "Failed to move items");
+    }
+  }
+
+  // Esc to close move picker
+  useEffect(() => {
+    if (!movePickerOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMovePickerOpen(false);
+    }
+    function onClick(e: MouseEvent) {
+      if (
+        movePickerRef.current &&
+        !movePickerRef.current.contains(e.target as Node)
+      )
+        setMovePickerOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [movePickerOpen]);
+
   // ── Selection actions toolbar ───────────────────────────────────────────
 
   const selectionToolbar =
@@ -718,6 +779,109 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           </svg>
           Group into sub-folder
         </button>
+
+        {/* Move button + folder picker */}
+        <div className="relative">
+          <button
+            onClick={() => setMovePickerOpen((v) => !v)}
+            className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
+            style={{ background: "rgba(124,111,212,0.1)", color: "#7c6fd4" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "rgba(124,111,212,0.2)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "rgba(124,111,212,0.1)")
+            }
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <polyline points="5 9 2 12 5 15" />
+              <polyline points="9 5 12 2 15 5" />
+              <polyline points="15 19 12 22 9 19" />
+              <polyline points="19 15 22 12 19 9" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <line x1="12" y1="2" x2="12" y2="22" />
+            </svg>
+            Move
+          </button>
+          {movePickerOpen && (
+            <div
+              ref={movePickerRef}
+              className="absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-[10px] py-1 shadow-lg"
+              style={{
+                background: "rgba(255,255,255,0.97)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <div
+                className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider"
+                style={{ color: "#9b96a8" }}
+              >
+                Move to folder
+              </div>
+              {/* Home (root) */}
+              <button
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
+                style={{ color: "#3d3a4d" }}
+                onClick={() => handleMoveSelected(null)}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <svg
+                  className="w-3.5 h-3.5 opacity-50"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+                Home
+              </button>
+              {/* Sibling folders */}
+              {entries
+                .filter((e) => e.kind === "folder")
+                .map((f) => (
+                  <button
+                    key={f.id}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
+                    style={{ color: "#3d3a4d" }}
+                    onClick={() => handleMoveSelected(f.id)}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    <FolderIcon className="w-3.5 h-3.5 opacity-40" />
+                    {f.name}
+                  </button>
+                ))}
+              {entries.filter((e) => e.kind === "folder").length === 0 && (
+                <div
+                  className="px-3 py-2 text-[12px]"
+                  style={{ color: "#9b96a8" }}
+                >
+                  No sub-folders
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="flex-1" />
 

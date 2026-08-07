@@ -84,6 +84,10 @@ interface DesktopState {
   setDragEntryId: (id: string | null) => void;
   setDragOverFolderId: (id: string | null) => void;
 
+  // Files refresh — bump this to refresh all open FilesApp windows
+  filesRefreshKey: number;
+  triggerFilesRefresh: () => void;
+
   // Auth
   isHydrated: boolean;
   isAuthenticated: boolean;
@@ -199,6 +203,10 @@ export const useDesktopStore = create<DesktopState>((set, get) => ({
   dragOverFolderId: null,
   setDragEntryId: (id) => set({ dragEntryId: id }),
   setDragOverFolderId: (id) => set({ dragOverFolderId: id }),
+
+  // Files refresh — bump to refresh all open FilesApp windows
+  filesRefreshKey: 0,
+  triggerFilesRefresh: () => set((s) => ({ filesRefreshKey: s.filesRefreshKey + 1 })),
 
   // Auth — starts unauthenticated; hydrateAuth runs on client mount
   isHydrated: false,
