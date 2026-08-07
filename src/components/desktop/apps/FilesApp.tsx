@@ -1442,6 +1442,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       }}
       onDrop={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (e.dataTransfer.files.length > 0) {
           handleExternalDrop(e.dataTransfer.files);
           return;
