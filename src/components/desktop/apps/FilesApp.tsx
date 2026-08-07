@@ -354,6 +354,63 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const setDragEntryId = useDesktopStore((s) => s.setDragEntryId);
   const setDragOverFolderId = useDesktopStore((s) => s.setDragOverFolderId);
 
+  // Track whether any drag is over this window (for green drop-highlight)
+  const dragOverCounterRef = useRef(0);
+  const [dragOverWindow, setDragOverWindow] = useState(false);
+
+  function handleWindowDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleWindowDragEnter(_e: React.DragEvent) {
+    dragOverCounterRef.current += 1;
+    if (dragOverCounterRef.current === 1) setDragOverWindow(true);
+  }
+
+  function handleWindowDragLeave(_e: React.DragEvent) {
+    dragOverCounterRef.current -= 1;
+    if (dragOverCounterRef.current <= 0) {
+      dragOverCounterRef.current = 0;
+      setDragOverWindow(false);
+    }
+  }
+
+  function handleWindowDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragOverCounterRef.current = 0;
+    setDragOverWindow(false);
+    commitDrop(currentFolderId);
+  }
+
+  // Resolve the set of entry IDs being dragged (all selected if drag source
+  // is in the selection, otherwise just the dragged entry alone).
+  function getDraggedIds(): string[] {
+    if (!dragEntryId) return [];
+    if (selectedIds.has(dragEntryId)) return Array.from(selectedIds);
+    return [dragEntryId];
+  }
+
+  async function commitDrop(targetFolderId: string | null) {
+    const ids = getDraggedIds();
+    setDragEntryId(null);
+    setDragOverFolderId(null);
+    if (ids.length === 0) return;
+    // Prevent dropping into the same folder the items are already in
+    if (targetFolderId === currentFolderId) return;
+    try {
+      await Promise.all(
+        ids.map((id) => FileSDKClient.move(id, targetFolderId)),
+      );
+      setSelectedIds(new Set());
+      await reloadCurrent();
+      skipNextRefreshRef.current = true;
+      triggerFilesRefresh();
+    } catch (err: any) {
+      setError(err.message ?? "Move failed");
+    }
+  }
+
   // ── Drag-to-select ──────────────────────────────────────────────────────
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -550,17 +607,12 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     }
   }
 
-  async function handleMove(entryId: string, targetFolderId: string | null) {
-    // Dropping into root or current folder — skip
-    if (!targetFolderId) return;
-    try {
-      await FileSDKClient.move(entryId, targetFolderId);
-      await reloadCurrent();
-      skipNextRefreshRef.current = true;
-      triggerFilesRefresh();
-    } catch (err: any) {
-      setError(err.message ?? "Move failed");
-    }
+  async function handleRenameSelected() {
+    if (selectedIds.size !== 1) return;
+    const id = Array.from(selectedIds)[0];
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return;
+    await handleRename(entry);
   }
 
   async function handleCreateFolder() {
@@ -677,10 +729,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
             ? (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const eid = dragEntryId;
-                setDragEntryId(null);
-                setDragOverFolderId(null);
-                if (eid && eid !== entry.id) handleMove(eid, entry.id);
+                if (dragEntryId && dragEntryId !== entry.id)
+                  commitDrop(entry.id);
               }
             : undefined
         }
@@ -783,9 +833,29 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       {/* Breadcrumb */}
       <div className="flex-1 flex items-center gap-0.5 text-[12px] mx-1 overflow-hidden">
         <button
-          className="shrink-0 hover:underline px-1.5 py-0.5 rounded-md"
-          style={{ color: currentFolderId === null ? "#1d1a28" : "#5e5a70" }}
+          className="shrink-0 hover:underline px-1.5 py-0.5 rounded-md transition-colors"
+          style={{
+            color: currentFolderId === null ? "#1d1a28" : "#5e5a70",
+            background:
+              dragOverFolderId === "__home__"
+                ? "rgba(34,197,94,0.2)"
+                : "transparent",
+          }}
           onClick={() => navigateToBreadcrumb(-1)}
+          onDragOver={(e) => {
+            if (dragEntryId) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.dataTransfer.dropEffect = "move";
+              setDragOverFolderId("__home__");
+            }
+          }}
+          onDragLeave={() => setDragOverFolderId(null)}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            commitDrop(null);
+          }}
         >
           Home
         </button>
@@ -793,11 +863,29 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           <span key={c.id} className="flex items-center gap-0.5 shrink-0">
             <span className="opacity-30">›</span>
             <button
-              className="hover:underline truncate max-w-[140px] px-1.5 py-0.5 rounded-md"
+              className="hover:underline truncate max-w-[140px] px-1.5 py-0.5 rounded-md transition-colors"
               style={{
                 color: i === breadcrumb.length - 1 ? "#1d1a28" : "#5e5a70",
+                background:
+                  dragOverFolderId === c.id
+                    ? "rgba(34,197,94,0.2)"
+                    : "transparent",
               }}
               onClick={() => navigateToBreadcrumb(i)}
+              onDragOver={(e) => {
+                if (dragEntryId) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverFolderId(c.id);
+                }
+              }}
+              onDragLeave={() => setDragOverFolderId(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                commitDrop(c.id);
+              }}
             >
               {c.name}
             </button>
@@ -970,6 +1058,33 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       <span className="text-[12px] font-medium" style={{ color: "#5e5a70" }}>
         {selectedIds.size} selected
       </span>
+
+      {selectedIds.size === 1 && (
+        <button
+          onClick={handleRenameSelected}
+          className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
+          style={{ background: "rgba(0,0,0,0.04)", color: "#4a4658" }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(0,0,0,0.08)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+          }
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          Rename
+        </button>
+      )}
 
       {hasSelection && (
         <>
@@ -1274,10 +1389,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       }}
       onDrop={(e) => {
         e.preventDefault();
-        const eid = dragEntryId;
-        setDragEntryId(null);
-        setDragOverFolderId(null);
-        if (eid) handleMove(eid, currentFolderId);
+        commitDrop(currentFolderId);
       }}
     >
       {errorBanner}
@@ -1354,11 +1466,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                       ? (e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          const eid = dragEntryId;
-                          setDragEntryId(null);
-                          setDragOverFolderId(null);
-                          if (eid && eid !== entry.id)
-                            handleMove(eid, entry.id);
+                          if (dragEntryId && dragEntryId !== entry.id)
+                            commitDrop(entry.id);
                         }
                       : undefined
                   }
@@ -1558,7 +1667,19 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
 
   if (isMobile) {
     return (
-      <div className="flex h-full flex-col">
+      <div
+        className="flex h-full flex-col relative"
+        onDragOver={handleWindowDragOver}
+        onDragEnter={handleWindowDragEnter}
+        onDragLeave={handleWindowDragLeave}
+        onDrop={handleWindowDrop}
+      >
+        {dragOverWindow && (
+          <div
+            className="absolute inset-0 z-50 pointer-events-none"
+            style={{ background: "rgba(34,197,94,0.25)" }}
+          />
+        )}
         {toolbar}
         {selectionToolbar}
         {contentArea}
@@ -1570,7 +1691,19 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   // ── Desktop ────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="flex h-full flex-col relative"
+      onDragOver={handleWindowDragOver}
+      onDragEnter={handleWindowDragEnter}
+      onDragLeave={handleWindowDragLeave}
+      onDrop={handleWindowDrop}
+    >
+      {dragOverWindow && (
+        <div
+          className="absolute inset-0 z-50 pointer-events-none"
+          style={{ background: "rgba(34,197,94,0.25)" }}
+        />
+      )}
       {toolbar}
       {selectionToolbar}
       <div className="flex flex-1 min-h-0">
