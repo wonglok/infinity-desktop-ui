@@ -462,8 +462,6 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     setDragEntryId(null);
     setDragOverFolderId(null);
     if (ids.length === 0) return;
-    // Prevent dropping into the same folder the items are already in
-    if (targetFolderId === currentFolderId) return;
     try {
       await Promise.all(
         ids.map((id) => FileSDKClient.move(id, targetFolderId)),
