@@ -587,7 +587,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       {/* Breadcrumb */}
       <div className="flex-1 flex items-center gap-0.5 text-[12px] mx-1 overflow-hidden">
         <button
-          className="shrink-0 hover:underline"
+          className="shrink-0 hover:underline px-1.5 py-0.5 rounded-md"
           style={{ color: currentFolderId === null ? "#1d1a28" : "#5e5a70" }}
           onClick={() => navigateToBreadcrumb(-1)}
         >
@@ -597,7 +597,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           <span key={c.id} className="flex items-center gap-0.5 shrink-0">
             <span className="opacity-30">›</span>
             <button
-              className="hover:underline truncate max-w-[140px]"
+              className="hover:underline truncate max-w-[140px] px-1.5 py-0.5 rounded-md"
               style={{
                 color: i === breadcrumb.length - 1 ? "#1d1a28" : "#5e5a70",
               }}
@@ -700,6 +700,26 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       />
     </div>
   );
+
+  async function handleDeleteSelected() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const confirmed = await showModal(
+      "Delete items",
+      `Are you sure you want to delete ${ids.length} item${ids.length > 1 ? "s" : ""}?`,
+      "confirm",
+    );
+    if (!confirmed) return;
+    try {
+      await Promise.all(ids.map((id) => FileSDKClient.delete(id)));
+      setSelectedIds(new Set());
+      await reloadCurrent();
+      skipNextRefreshRef.current = true;
+      triggerFilesRefresh();
+    } catch (err: any) {
+      setError(err.message ?? "Failed to delete items");
+    }
+  }
 
   async function handleMoveSelected(targetFolderId: string | null) {
     if (selectedIds.size === 0) return;
@@ -884,6 +904,31 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
         </div>
 
         <div className="flex-1" />
+
+        <button
+          onClick={handleDeleteSelected}
+          className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
+          style={{ color: "#d32f2f" }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(211,47,47,0.08)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+          Remove
+        </button>
 
         <button
           onClick={() => setSelectedIds(new Set())}
