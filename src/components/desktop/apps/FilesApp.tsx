@@ -66,25 +66,6 @@ function Spinner() {
   );
 }
 
-// ── Chevron ─────────────────────────────────────────────────────────────────
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      className="w-3 h-3 shrink-0 transition-transform"
-      style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m9 5 7 7-7 7" />
-    </svg>
-  );
-}
-
 // ── View mode icons ─────────────────────────────────────────────────────────
 
 function ListIcon() {
@@ -142,14 +123,6 @@ function GridIcon() {
 
 type ViewMode = "list" | "detail" | "grid";
 
-// ── Tree node ───────────────────────────────────────────────────────────────
-
-interface TreeNode {
-  entry: FileEntry;
-  children: TreeNode[];
-  loaded: boolean;
-}
-
 // ── FilesApp ────────────────────────────────────────────────────────────────
 
 export function FilesApp({ window: _win }: { window: WindowInstance }) {
@@ -166,11 +139,8 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const [treeExpanded, setTreeExpanded] = useState<Set<string>>(new Set());
-  const [treeRoot, setTreeRoot] = useState<TreeNode[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{
@@ -184,6 +154,46 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   const [dragEntryId, setDragEntryId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
+  // ── Context menu ────────────────────────────────────────────────────────
+
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entry: FileEntry;
+  } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  function closeContextMenu() {
+    setContextMenu(null);
+  }
+
+  function openContextMenu(e: React.MouseEvent, entry: FileEntry) {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, entry });
+  }
+
+  // Esc key and click-outside listeners
+  useEffect(() => {
+    if (!contextMenu) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeContextMenu();
+    }
+    function onClick(e: MouseEvent) {
+      if (
+        contextMenuRef.current &&
+        !contextMenuRef.current.contains(e.target as Node)
+      )
+        closeContextMenu();
+    }
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [contextMenu]);
+
   // ── Load folder ────────────────────────────────────────────────────────
 
   async function loadFolder(folderId: string | null) {
@@ -193,7 +203,7 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       const list = await FileSDKClient.list(folderId);
       setEntries(list);
       setCurrentFolderId(folderId);
-      setSelectedEntryId(null);
+      setSelectedIds(new Set());
     } catch (err: any) {
       setError(err.message ?? "Failed to load files");
     } finally {
@@ -224,127 +234,9 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     }
   }
 
-  // ── Tree ───────────────────────────────────────────────────────────────
-
-  async function loadTreeNode(
-    folderId: string | null,
-    autoExpand = false,
-  ): Promise<TreeNode[]> {
-    const list = await FileSDKClient.list(folderId);
-    const folders = list.filter((e) => e.kind === "folder");
-    const nodes: TreeNode[] = folders.map((e) => ({
-      entry: e,
-      children: [],
-      loaded: false,
-    }));
-
-    // Auto-expand first level: load children for each root folder
-    if (autoExpand) {
-      const expandIds = new Set<string>();
-      for (const node of nodes) {
-        node.children = await loadTreeNode(node.entry.id, false);
-        node.loaded = true;
-        expandIds.add(node.entry.id);
-      }
-      setTreeExpanded(expandIds);
-    }
-
-    return nodes;
-  }
-
   useEffect(() => {
     loadFolder(null);
-    loadTreeNode(null, true).then(setTreeRoot);
   }, []);
-
-  async function toggleTreeExpand(node: TreeNode) {
-    const id = node.entry.id;
-
-    if (treeExpanded.has(id)) {
-      // Collapse
-      setTreeExpanded((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    } else {
-      // Expand — load children if needed
-      if (!node.loaded) {
-        node.children = await loadTreeNode(id);
-        node.loaded = true;
-      }
-      setTreeExpanded((prev) => new Set(prev).add(id));
-      setTreeRoot([...treeRoot]); // trigger re-render for loaded children
-    }
-
-    // Navigate into this folder
-    navigateToFolder(node.entry);
-  }
-
-  function TreeBranch({ nodes, depth }: { nodes: TreeNode[]; depth: number }) {
-    return (
-      <>
-        {nodes.map((node) => {
-          const expanded = treeExpanded.has(node.entry.id);
-          const isActive = currentFolderId === node.entry.id;
-          return (
-            <div key={node.entry.id}>
-              <button
-                className="flex items-center gap-1 w-full py-1 pr-2 text-[12px] text-left transition-colors rounded-[6px]"
-                style={{
-                  paddingLeft: 8 + depth * 16,
-                  background: isActive
-                    ? "rgba(124,111,212,0.15)"
-                    : "transparent",
-                  color: isActive ? "#1d1a28" : "#4a4658",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive)
-                    e.currentTarget.style.background = "rgba(0,0,0,0.04)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive)
-                    e.currentTarget.style.background = "transparent";
-                }}
-                onClick={() => toggleTreeExpand(node)}
-                draggable
-                onDragStart={() => setDragEntryId(node.entry.id)}
-                onDragEnd={() => {
-                  setDragEntryId(null);
-                  setDragOverFolderId(null);
-                }}
-                onDragOver={(e) => {
-                  if (dragEntryId && dragEntryId !== node.entry.id) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.dataTransfer.dropEffect = "move";
-                    setDragOverFolderId(node.entry.id);
-                  }
-                }}
-                onDragLeave={() => setDragOverFolderId(null)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const entryId = dragEntryId;
-                  setDragEntryId(null);
-                  setDragOverFolderId(null);
-                  if (entryId && entryId !== node.entry.id)
-                    handleMove(entryId, node.entry.id);
-                }}
-              >
-                <Chevron open={expanded} />
-                <FolderIcon className="w-3.5 h-3.5 shrink-0 opacity-50" />
-                <span className="truncate">{node.entry.name}</span>
-              </button>
-              {expanded && node.children.length > 0 && (
-                <TreeBranch nodes={node.children} depth={depth + 1} />
-              )}
-            </div>
-          );
-        })}
-      </>
-    );
-  }
 
   // ── Mutations ──────────────────────────────────────────────────────────
 
@@ -381,8 +273,6 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
       });
       await FileSDKClient.confirmUpload(entry.id, file.size);
       await reloadCurrent();
-      // Refresh tree
-      loadTreeNode(null).then(setTreeRoot);
     } catch (err: any) {
       setError(err.message ?? "Upload failed");
     } finally {
@@ -394,11 +284,42 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   async function handleDelete(entryId: string) {
     try {
       await FileSDKClient.delete(entryId);
-      setSelectedEntryId(null);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(entryId);
+        return next;
+      });
       await reloadCurrent();
-      loadTreeNode(null).then(setTreeRoot);
     } catch (err: any) {
       setError(err.message ?? "Delete failed");
+    }
+  }
+
+  async function handleDeleteWithConfirm(entry: FileEntry) {
+    closeContextMenu();
+    const confirmed = await showModal(
+      "Delete file",
+      `Are you sure you want to delete "${entry.name}"?`,
+      "confirm",
+    );
+    if (confirmed) handleDelete(entry.id);
+  }
+
+  async function handleRename(entry: FileEntry) {
+    closeContextMenu();
+    const newName = await showModal(
+      "Rename",
+      `Enter a new name for "${entry.name}".`,
+      "prompt",
+      { placeholder: "New name", defaultValue: entry.name },
+    );
+    if (!newName || typeof newName !== "string" || !newName.trim()) return;
+    if (newName.trim() === entry.name) return;
+    try {
+      await FileSDKClient.rename(entry.id, newName.trim());
+      await reloadCurrent();
+    } catch (err: any) {
+      setError(err.message ?? "Rename failed");
     }
   }
 
@@ -408,7 +329,6 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     try {
       await FileSDKClient.move(entryId, targetFolderId);
       await reloadCurrent();
-      loadTreeNode(null).then(setTreeRoot);
     } catch (err: any) {
       setError(err.message ?? "Move failed");
     }
@@ -428,9 +348,41 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     try {
       await FileSDKClient.createFolder(name.trim(), currentFolderId);
       await reloadCurrent();
-      loadTreeNode(null).then(setTreeRoot);
     } catch (err: any) {
       setError(err.message ?? "Failed to create folder");
+    }
+  }
+
+  async function handleGroupIntoFolder() {
+    if (selectedIds.size === 0) return;
+
+    // Determine next available sub-folder name
+    const existingNames = entries
+      .filter((e) => e.kind === "folder")
+      .map((e) => e.name);
+    let max = 0;
+    const re = /^new-sub-folder-(\d+)$/;
+    for (const name of existingNames) {
+      const m = name.match(re);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    const folderName = `new-sub-folder-${String(max + 1).padStart(3, "0")}`;
+
+    const ids = Array.from(selectedIds);
+    try {
+      // Create the folder
+      const folderEntry = await FileSDKClient.createFolder(
+        folderName,
+        currentFolderId,
+      );
+      // Move selected items into the new folder in parallel
+      await Promise.all(
+        ids.map((id) => FileSDKClient.move(id, folderEntry.id)),
+      );
+      setSelectedIds(new Set());
+      await reloadCurrent();
+    } catch (err: any) {
+      setError(err.message ?? "Failed to group items");
     }
   }
 
@@ -447,9 +399,22 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
 
   function entryRow(entry: FileEntry, compact = false) {
     const Icon = fileIcon(entry);
-    const isSel = selectedEntryId === entry.id;
+    const isSel = selectedIds.has(entry.id);
     const isDropTarget = dragOverFolderId === entry.id;
     const isDragging = dragEntryId === entry.id;
+
+    function handleClick(e: React.MouseEvent) {
+      if (e.metaKey || e.ctrlKey) {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(entry.id)) next.delete(entry.id);
+          else next.add(entry.id);
+          return next;
+        });
+      } else {
+        setSelectedIds(new Set([entry.id]));
+      }
+    }
 
     return (
       <div
@@ -485,18 +450,12 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
               }
             : undefined
         }
-        onClick={() => {
-          setSelectedEntryId(entry.id);
-          if (entry.kind === "folder") navigateToFolder(entry);
-        }}
+        onClick={handleClick}
         onDoubleClick={() => {
           if (entry.kind === "folder") navigateToFolder(entry);
           else if (entry.cdnUrl) window.open(entry.cdnUrl, "_blank");
         }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          if (confirm(`Delete "${entry.name}"?`)) handleDelete(entry.id);
-        }}
+        onContextMenu={(e) => openContextMenu(e, entry)}
         className={`flex items-center gap-2 transition-colors outline-none cursor-default ${compact ? "px-3 py-1.5 text-[13px]" : "px-4 py-2 text-[14px]"}`}
         style={{
           background: isDropTarget
@@ -703,6 +662,76 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     </div>
   );
 
+  // ── Selection actions toolbar ───────────────────────────────────────────
+
+  const selectionToolbar =
+    selectedIds.size > 0 ? (
+      <div
+        className="flex items-center gap-2 px-3 py-1.5 shrink-0"
+        style={{
+          background: "rgba(124,111,212,0.06)",
+          borderBottom: "1px solid rgba(124,111,212,0.12)",
+        }}
+      >
+        <span className="text-[12px] font-medium" style={{ color: "#5e5a70" }}>
+          {selectedIds.size} selected
+        </span>
+
+        <button
+          onClick={handleGroupIntoFolder}
+          className="flex items-center gap-1 px-2.5 h-6.5 rounded-[8px] text-[11px] font-medium transition-colors"
+          style={{ background: "rgba(124,111,212,0.1)", color: "#7c6fd4" }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(124,111,212,0.2)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "rgba(124,111,212,0.1)")
+          }
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            <line x1="12" y1="11" x2="12" y2="17" />
+            <line x1="9" y1="14" x2="15" y2="14" />
+          </svg>
+          Group into sub-folder
+        </button>
+
+        <div className="flex-1" />
+
+        <button
+          onClick={() => setSelectedIds(new Set())}
+          className="flex items-center gap-1 px-2 h-6 rounded-[6px] text-[11px] transition-colors"
+          style={{ color: "#9b96a8" }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <svg
+            className="w-3 h-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+          Clear
+        </button>
+      </div>
+    ) : null;
+
   // ── Error banner ───────────────────────────────────────────────────────
 
   const errorBanner = error ? (
@@ -758,9 +787,23 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
           >
             {entries.map((entry) => {
               const Icon = fileIcon(entry);
-              const isSel = selectedEntryId === entry.id;
+              const isSel = selectedIds.has(entry.id);
               const isDropTarget = dragOverFolderId === entry.id;
               const isDragging = dragEntryId === entry.id;
+
+              function handleClick(e: React.MouseEvent) {
+                if (e.metaKey || e.ctrlKey) {
+                  setSelectedIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(entry.id)) next.delete(entry.id);
+                    else next.add(entry.id);
+                    return next;
+                  });
+                } else {
+                  setSelectedIds(new Set([entry.id]));
+                }
+              }
+
               return (
                 <div
                   key={entry.id}
@@ -809,19 +852,12 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
                       : "none",
                     outlineOffset: -2,
                   }}
-                  onClick={() => {
-                    setSelectedEntryId(entry.id);
-                    if (entry.kind === "folder") navigateToFolder(entry);
-                  }}
+                  onClick={handleClick}
                   onDoubleClick={() => {
                     if (entry.kind === "folder") navigateToFolder(entry);
                     else if (entry.cdnUrl) window.open(entry.cdnUrl, "_blank");
                   }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    if (confirm(`Delete "${entry.name}"?`))
-                      handleDelete(entry.id);
-                  }}
+                  onContextMenu={(e) => openContextMenu(e, entry)}
                   onMouseEnter={(e) => {
                     if (!isSel && !isDropTarget)
                       e.currentTarget.style.background = "rgba(0,0,0,0.03)";
@@ -892,20 +928,105 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     </div>
   );
 
-  // ── Sidebar ────────────────────────────────────────────────────────────
+  // ── Context menu ────────────────────────────────────────────────────────
 
-  const sidebar = sidebarOpen ? (
+  const contextMenuEl = contextMenu ? (
     <div
-      className="shrink-0 overflow-y-auto"
-      style={{ width: 200, borderRight: "1px solid rgba(0,0,0,0.06)" }}
+      ref={contextMenuRef}
+      className="fixed z-50 min-w-[160px] rounded-[10px] py-1 shadow-lg"
+      style={{
+        left: contextMenu.x,
+        top: contextMenu.y,
+        background: "rgba(255,255,255,0.97)",
+        backdropFilter: "blur(12px)",
+        border: "1px solid rgba(0,0,0,0.08)",
+      }}
     >
-      <div
-        className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider"
-        style={{ color: "#9b96a8" }}
+      {contextMenu.entry.kind !== "folder" && contextMenu.entry.cdnUrl && (
+        <button
+          className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
+          style={{ color: "#3d3a4d" }}
+          onClick={() => {
+            closeContextMenu();
+            window.open(contextMenu.entry.cdnUrl!, "_blank");
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <svg
+            className="w-3.5 h-3.5 opacity-50"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+          Open
+        </button>
+      )}
+      <button
+        className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
+        style={{ color: "#3d3a4d" }}
+        onClick={() => handleRename(contextMenu.entry)}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.background = "rgba(0,0,0,0.04)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.background = "transparent")
+        }
       >
-        Folders
-      </div>
-      <TreeBranch nodes={treeRoot} depth={0} />
+        <svg
+          className="w-3.5 h-3.5 opacity-50"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+        Rename
+      </button>
+      <hr
+        style={{
+          margin: "4px 0",
+          border: "none",
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+        }}
+      />
+      <button
+        className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-left transition-colors"
+        style={{ color: "#d32f2f" }}
+        onClick={() => handleDeleteWithConfirm(contextMenu.entry)}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.background = "rgba(211,47,47,0.06)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.background = "transparent")
+        }
+      >
+        <svg
+          className="w-3.5 h-3.5 opacity-60"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
+        Delete
+      </button>
     </div>
   ) : null;
 
@@ -915,7 +1036,9 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
     return (
       <div className="flex h-full flex-col">
         {toolbar}
+        {selectionToolbar}
         {contentArea}
+        {contextMenuEl}
       </div>
     );
   }
@@ -925,35 +1048,9 @@ export function FilesApp({ window: _win }: { window: WindowInstance }) {
   return (
     <div className="flex h-full flex-col">
       {toolbar}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar toggle */}
-        <button
-          className="shrink-0 flex items-center justify-center transition-colors"
-          style={{
-            width: 12,
-            background: "rgba(0,0,0,0.015)",
-            borderRight: "1px solid rgba(0,0,0,0.06)",
-          }}
-          onClick={() => setSidebarOpen((v) => !v)}
-        >
-          <svg
-            className="w-2.5 h-2.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            style={{
-              color: "rgba(0,0,0,0.25)",
-              transform: sidebarOpen ? "rotate(180deg)" : "rotate(0deg)",
-            }}
-          >
-            <path d="m9 5 7 7-7 7" />
-          </svg>
-        </button>
-        {sidebar}
-        {contentArea}
-      </div>
+      {selectionToolbar}
+      {contentArea}
+      {contextMenuEl}
     </div>
   );
 }
